@@ -14,3 +14,6 @@ SOURCES=mandelrust.rs
 all:		mandelrust
 
 mandelrust:	mandelrust.rs
+
+clean:		#
+		@rm -f mandelrust
