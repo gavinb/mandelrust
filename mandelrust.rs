@@ -7,32 +7,38 @@
 //
 // Packages required:
 //
-// - OpenGL
+// - OpenGLES
 // - GLFW
 // - cgmath
 //
-// export RUST_PATH=~/src/cgmath-rs:~/src/glfw-rs:~/src/rust-opengles
-//
 //============================================================================
 
-extern crate gl;
+extern crate native;
+extern crate num;
+
+extern crate opengles;
 extern crate glfw;
 extern crate cgmath;
 
-use gl::gl2;
+use opengles::gl2;
 
 use cgmath::vector::Vec3;
 use cgmath::aabb::Aabb3;
 
+use std::str;
 use std::libc;
+use num::complex::Complex64;
+use std::num::{sin};
 
+// Make for platform==MacOSX
 #[feature(link_args)]
 #[link(name = "OpenGL")]
 
 type Vec3f = Vec3<f32>;
 type AABB3f = Aabb3<f32>;
 
-static vertex_shader_source: &'static str = "
+static vertex_shader_source: &'static str = "";
+/*
 #version 150
 
 in vec2 position;
@@ -46,8 +52,10 @@ void main()
     gl_Position = vec4(position, 0.0, 1.0);
 }
 ";
+*/
 
-static fragment_shader_source: &'static str = "
+static fragment_shader_source: &'static str = "";
+/*
 #version 150
 
 in vec3 Color;
@@ -57,25 +65,7 @@ void main()
 {
     outColor = vec4(Color, 1.0);
 }";
-
-struct Particle {
-    position: Vec3f,
-    lastPosition: Vec3f,
-    velocity: Vec3f,
-    colour: Vec3f,
-    energy: f32,
-    size: f32,
-}
-
-struct ParticleSystem {
-    // texture: Texture,
-    // blendMode: BlendMode,
-    // systemType: int,
-    particles: ~[Particle],
-    // shapes: [Shape],
-    aliveCount: uint,
-    boundingBox: AABB3f,
-}
+*/
 
 struct ErrorContext;
 impl glfw::ErrorCallback for ErrorContext {
@@ -92,11 +82,12 @@ struct WindowController<'a> {
     vertex_shader: gl2::GLuint,
     fragment_shader: gl2::GLuint,
     shader_program: gl2::GLuint,
+    uni_color: gl2::GLint,
 }
 
 struct KeyController;
 
-impl glfw::KeyCallback for KeyController {
+impl KeyController {
     fn call(&self, window: &glfw::Window, key: glfw::Key, _: libc::c_int, action: glfw::Action, _: glfw::Modifiers) {
         if action == glfw::Press && key == glfw::KeyEscape {
             window.set_should_close(true);
@@ -115,7 +106,7 @@ struct MandelEngine {
 impl MandelEngine {
 
     fn new() -> MandelEngine {
-        MandelEngine(re0=-2.0, re1=2.0, im0=-2.0, im1=2.0)
+        MandelEngine { re0: -2.0, re1: 2.0, im0: -2.0, im1: 2.0, delta: 1.0 }
     }
 
     // Evalute entire region
@@ -145,6 +136,7 @@ impl<'a> WindowController<'a> {
                                         vertex_shader: 0,
                                         fragment_shader: 0,
                                         shader_program: 0,
+                                        uni_color: 0,
         };
 
         let (width, height) =  wc.window.get_framebuffer_size();
@@ -173,7 +165,7 @@ impl<'a> WindowController<'a> {
         // Vertex Shader
 
         wc.vertex_shader = gl2::create_shader(gl2::VERTEX_SHADER);
-        gl2::shader_source(wc.vertex_shader, [vertex_shader_source.to_owned().into_bytes()]);
+        gl2::shader_source(wc.vertex_shader, ~[vertex_shader_source.to_owned().as_bytes()]);
 
         gl2::compile_shader(wc.vertex_shader);
 
@@ -187,7 +179,7 @@ impl<'a> WindowController<'a> {
         // Fragment Shader
 
         wc.fragment_shader = gl2::create_shader(gl2::FRAGMENT_SHADER);
-        gl2::shader_source(wc.fragment_shader, [fragment_shader_source.to_owned().into_bytes()]);
+        gl2::shader_source(wc.fragment_shader, ~[fragment_shader_source.to_owned().as_bytes()]);
         gl2::compile_shader(wc.fragment_shader);
 
         let status = gl2::get_shader_iv(wc.fragment_shader, gl2::COMPILE_STATUS);
@@ -245,7 +237,7 @@ impl<'a> WindowController<'a> {
         // Animate
 
         let time = glfw::get_time();
-        glUniform3f(wc.uni_color, (sin(time * 4.0) + 1.0) / 2.0, 0.0, 0.0);
+//        gl2::uniform_3f(wc.uni_color, (sin(time * 4.0) + 1.0) / 2.0, 0.0, 0.0);
 
         // Draw!
 
@@ -272,16 +264,36 @@ impl<'a> WindowController<'a> {
         // @todo Missing from bindings
         //gl2::delete_vertex_arrays(vao);
     }
+
+    fn handle_window_event(&self, window: &glfw::Window, (time, event): (f64, glfw::WindowEvent)) {
+        match event {
+            glfw::CloseEvent                    => println!("Time: {}, Window close requested.", time),
+            glfw::KeyEvent(key, scancode, action, mods) => {
+                println!("Time: {}, Key: {}, ScanCode: {}, Action: {}, Modifiers: [{}]", time, key, scancode, action, mods);
+                match (key, action) {
+                    (glfw::KeyEscape, glfw::Press) => window.set_should_close(true),
+                    (glfw::KeyR, glfw::Press) => {
+                        // Resize should cause the window to "refresh"
+                        let (window_width, window_height) = window.get_size();
+                        window.set_size(window_width + 1, window_height);
+                        window.set_size(window_width, window_height);
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {
-    std::rt::start_on_main_thread(argc, argv, main)
+    native::start(argc, argv, main)
 }
 
 fn main() {
 
-    println(glfw::get_version().to_str());
+    println!("{}", glfw::get_version().to_str());
     println!("GLFW version: {:s}", glfw::get_version_string());
 
     glfw::start(proc() {
@@ -302,12 +314,11 @@ fn main() {
 
         let win_ctrl = ~WindowController::new(&window);
 
-        window.set_key_callback(~KeyController);
-
         while !window.should_close() {
-            win_ctrl.draw();
-
             glfw::poll_events();
+            for event in window.flush_events() {
+                win_ctrl.handle_window_event(&window, event);
+            }
         }
     });
 }
