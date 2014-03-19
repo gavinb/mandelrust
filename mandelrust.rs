@@ -13,6 +13,11 @@
 //
 //============================================================================
 
+#[license = "BSD"];
+
+#[allow(deprecated_owned_vector)];
+#[allow(dead_code)];
+
 extern crate native;
 extern crate num;
 
@@ -25,8 +30,6 @@ use opengles::gl2;
 use cgmath::vector::Vec3;
 use cgmath::aabb::Aabb3;
 
-use std::str;
-use std::libc;
 use num::complex::Complex64;
 use std::num::{sin};
 
@@ -73,6 +76,8 @@ impl glfw::ErrorCallback for ErrorContext {
     }
 }
 
+//----------------------------------------------------------------------------
+
 struct WindowController<'a> {
     window: &'a glfw::Window,
     vertices: ~[f32],
@@ -82,48 +87,6 @@ struct WindowController<'a> {
     fragment_shader: gl2::GLuint,
     shader_program: gl2::GLuint,
     uni_color: gl2::GLint,
-}
-
-struct KeyController;
-
-impl KeyController {
-    fn call(&self, window: &glfw::Window, key: glfw::Key, _: libc::c_int, action: glfw::Action, _: glfw::Modifiers) {
-        if action == glfw::Press && key == glfw::KeyEscape {
-            window.set_should_close(true);
-        }
-    }
-}
-
-struct MandelEngine {
-    re0: f32,
-    re1: f32,
-    im0: f32,
-    im1: f32,
-    delta: f32,
-}
-
-impl MandelEngine {
-
-    fn new() -> MandelEngine {
-        MandelEngine { re0: -2.0, re1: 2.0, im0: -2.0, im1: 2.0, delta: 1.0 }
-    }
-
-    // Evalute entire region
-    fn process() {
-    }
-
-    // Evaluate a single point
-    fn mandel(z: Complex64) -> int {
-        let maxiter: int = 80;
-        let mut c: Complex64 = z;
-        for n in range(0, maxiter) {
-            if c.norm() > 2.0 {
-                return n;
-            }
-            c = c*c+z;
-        }
-        return maxiter;
-    }
 }
 
 impl<'a> WindowController<'a> {
@@ -169,7 +132,7 @@ impl<'a> WindowController<'a> {
             fail!("Create v.shader failed");
         }
 
-        gl2::shader_source(wc.vertex_shader, ~[vertex_shader_source.to_owned().as_bytes()]);
+        gl2::shader_source(wc.vertex_shader, [vertex_shader_source.to_owned().as_bytes()]);
 
         let err = gl2::get_error();
         if err != 0 {
@@ -198,7 +161,7 @@ impl<'a> WindowController<'a> {
             fail!("Create f.shader failed");
         }
 
-        gl2::shader_source(wc.fragment_shader, ~[fragment_shader_source.to_owned().as_bytes()]);
+        gl2::shader_source(wc.fragment_shader, [fragment_shader_source.to_owned().as_bytes()]);
 
         let err = gl2::get_error();
         if err != 0 {
@@ -340,6 +303,42 @@ impl<'a> WindowController<'a> {
     }
 }
 
+//----------------------------------------------------------------------------
+
+struct MandelEngine {
+    re0: f32,
+    re1: f32,
+    im0: f32,
+    im1: f32,
+    delta: f32,
+}
+
+impl MandelEngine {
+
+    fn new() -> MandelEngine {
+        MandelEngine { re0: -2.0, re1: 2.0, im0: -2.0, im1: 2.0, delta: 1.0 }
+    }
+
+    // Evalute entire region
+    fn process() {
+    }
+
+    // Evaluate a single point
+    fn mandel(z: Complex64) -> int {
+        let maxiter: int = 80;
+        let mut c: Complex64 = z;
+        for n in range(0, maxiter) {
+            if c.norm() > 2.0 {
+                return n;
+            }
+            c = c*c+z;
+        }
+        return maxiter;
+    }
+}
+
+//----------------------------------------------------------------------------
+
 #[start]
 fn start(argc: int, argv: **u8) -> int {
     native::start(argc, argv, main)
@@ -355,7 +354,6 @@ fn main() {
         glfw::window_hint::context_version_minor(2);
         glfw::window_hint::opengl_forward_compat(true);
         glfw::window_hint::opengl_profile(glfw::OpenGlCoreProfile);
-
         glfw::window_hint::resizable(false);
 
         let window = glfw::Window::create(640, 480,
