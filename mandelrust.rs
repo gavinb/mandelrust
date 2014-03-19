@@ -30,15 +30,13 @@ use std::libc;
 use num::complex::Complex64;
 use std::num::{sin};
 
-// Make for platform==MacOSX
-#[feature(link_args)]
-#[link(name = "OpenGL")]
-
 type Vec3f = Vec3<f32>;
 type AABB3f = Aabb3<f32>;
 
-static vertex_shader_source: &'static str = "";
-/*
+//----------------------------------------------------------------------------
+
+static vertex_shader_source: &'static str = "
+
 #version 150
 
 in vec2 position;
@@ -52,10 +50,9 @@ void main()
     gl_Position = vec4(position, 0.0, 1.0);
 }
 ";
-*/
 
-static fragment_shader_source: &'static str = "";
-/*
+static fragment_shader_source: &'static str = "
+
 #version 150
 
 in vec3 Color;
@@ -64,8 +61,10 @@ out vec4 outColor;
 void main()
 {
     outColor = vec4(Color, 1.0);
-}";
-*/
+}
+";
+
+//----------------------------------------------------------------------------
 
 struct ErrorContext;
 impl glfw::ErrorCallback for ErrorContext {
@@ -165,44 +164,97 @@ impl<'a> WindowController<'a> {
         // Vertex Shader
 
         wc.vertex_shader = gl2::create_shader(gl2::VERTEX_SHADER);
+
+        if wc.vertex_shader == 0 {
+            fail!("Create v.shader failed");
+        }
+
         gl2::shader_source(wc.vertex_shader, ~[vertex_shader_source.to_owned().as_bytes()]);
 
+        let err = gl2::get_error();
+        if err != 0 {
+            fail!("glShaderSource.v err 0x{:x}", err);
+        }
+
         gl2::compile_shader(wc.vertex_shader);
+
+        let err = gl2::get_error();
+        if err != 0 {
+            fail!("glCompileShader.f err 0x{:x}", err);
+        }
 
         let status = gl2::get_shader_iv(wc.vertex_shader, gl2::COMPILE_STATUS);
 
         if status != gl2::TRUE as i32 {
             let log = gl2::get_shader_info_log(wc.vertex_shader);
-            println!("vertex_shader compile error {} = {}", status, log);
+            fail!("glCompileShader.v err 0x{:x}: {}", status, log);
         }
 
         // Fragment Shader
 
         wc.fragment_shader = gl2::create_shader(gl2::FRAGMENT_SHADER);
+
+        if wc.vertex_shader == 0 {
+            fail!("Create f.shader failed");
+        }
+
         gl2::shader_source(wc.fragment_shader, ~[fragment_shader_source.to_owned().as_bytes()]);
+
+        let err = gl2::get_error();
+        if err != 0 {
+            fail!("glShaderSource.f -> 0x{:x}", err);
+        }
+
         gl2::compile_shader(wc.fragment_shader);
+
+        let err = gl2::get_error();
+        if err != 0 {
+            fail!("glCompileShader.v err 0x{:x}", err);
+        }
 
         let status = gl2::get_shader_iv(wc.fragment_shader, gl2::COMPILE_STATUS);
 
         if status != gl2::TRUE as i32 {
             let log = gl2::get_shader_info_log(wc.fragment_shader);
-            println!("fragment_shader compile error {} = {}", status, log);
+            fail!("glCompileShader.f err 0x{:x}: {}", status, log);
         }
 
         // Link
 
         wc.shader_program = gl2::create_program();
 
+        if wc.shader_program == 0 {
+            fail!("glCreateProgram failed");
+        }
+
         gl2::attach_shader(wc.shader_program, wc.vertex_shader);
         gl2::attach_shader(wc.shader_program, wc.fragment_shader);
 
+        let err = gl2::get_error();
+        if err != 0 {
+            fail!("glAttachShader err 0x{:x}", err);
+        }
+
         gl2::link_program(wc.shader_program);
+
+        let err = gl2::get_error();
+        if err != 0 {
+            fail!("glLinkProgram err 0x{:x}", err);
+        }
+
+        let status = gl2::get_program_iv(wc.shader_program, gl2::LINK_STATUS);
+
+        if status != gl2::TRUE as i32 {
+            let log = gl2::get_shader_info_log(wc.shader_program);
+            fail!("glLinkProgram err {}: {}", status, log);
+        }
 
         gl2::use_program(wc.shader_program);
 
         let err = gl2::get_error();
         if err != 0 {
-            println!("after link err1 = 0x{:x}", err);
+            let log = gl2::get_program_info_log(wc.shader_program);
+            fail!("glUseProgram error: {}", log);
         }
 
         // Attributes
@@ -221,7 +273,7 @@ impl<'a> WindowController<'a> {
 
         let err = gl2::get_error();
         if err != 0 {
-            println!("attrib err = {:x}", err);
+            fail!("attrib err = {:x}", err);
         }
 
         wc
@@ -267,7 +319,9 @@ impl<'a> WindowController<'a> {
 
     fn handle_window_event(&self, window: &glfw::Window, (time, event): (f64, glfw::WindowEvent)) {
         match event {
-            glfw::CloseEvent                    => println!("Time: {}, Window close requested.", time),
+
+            glfw::CloseEvent => println!("Time: {}, Window close requested.", time),
+
             glfw::KeyEvent(key, scancode, action, mods) => {
                 println!("Time: {}, Key: {}, ScanCode: {}, Action: {}, Modifiers: [{}]", time, key, scancode, action, mods);
                 match (key, action) {
@@ -293,7 +347,6 @@ fn start(argc: int, argv: **u8) -> int {
 
 fn main() {
 
-    println!("{}", glfw::get_version().to_str());
     println!("GLFW version: {:s}", glfw::get_version_string());
 
     glfw::start(proc() {
