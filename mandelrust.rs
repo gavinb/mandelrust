@@ -30,7 +30,8 @@ use opengles::gl2;
 use cgmath::vector::Vec3;
 use cgmath::aabb::Aabb3;
 
-use num::complex::Complex64;
+use num::complex::{Cmplx, Complex64};
+
 use std::num::{sin};
 
 type Vec3f = Vec3<f32>;
@@ -252,7 +253,7 @@ impl<'a> WindowController<'a> {
         // Animate
 
         let time = glfw::get_time();
-//        gl2::uniform_3f(wc.uni_color, (sin(time * 4.0) + 1.0) / 2.0, 0.0, 0.0);
+        gl2::uniform_3f(self.uni_color, (sin(time * 4.0f32 as f64) as f32 + 1.0f32) / 2.0f32, 0.0f32, 0.0f32);
 
         // Draw!
 
@@ -316,16 +317,29 @@ struct MandelEngine {
 impl MandelEngine {
 
     fn new() -> MandelEngine {
-        MandelEngine { re0: -2.0, re1: 2.0, im0: -2.0, im1: 2.0, delta: 1.0 }
+        MandelEngine { re0: -2.0, re1: 2.0, im0: -2.0, im1: 2.0, delta: 0.1 }
     }
 
     // Evalute entire region
-    fn process() {
+    fn process(&self) {
+        println!("+++ process: re: {}..{} im: {}..{}", self.re0, self.re1, self.im0, self.im1);
+        // @todo range_step doesn't work for floats :( It needs CheckedAdd for f32. So we do loops manually.
+        let mut re = self.re0;
+        while re < self.re1 {
+            let mut im = self.im0;
+            while im < self.im1 {
+                let z = Cmplx::new(re as f64, im as f64);
+                println!("z={}+{}i, c={}", re, im, self.mandel(z));
+                im += self.delta;
+            }
+            re += self.delta;
+        }
+        println!("--- process");
     }
 
     // Evaluate a single point
-    fn mandel(z: Complex64) -> int {
-        let maxiter: int = 80;
+    fn mandel(&self, z: Complex64) -> uint {
+        let maxiter: uint = 80;
         let mut c: Complex64 = z;
         for n in range(0, maxiter) {
             if c.norm() > 2.0 {
@@ -364,6 +378,9 @@ fn main() {
         window.make_context_current();
 
         let win_ctrl = ~WindowController::new(&window);
+
+        let engine = MandelEngine::new();
+        native::task::spawn( proc() { engine.process(); });
 
         while !window.should_close() {
             glfw::poll_events();
