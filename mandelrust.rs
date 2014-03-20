@@ -88,6 +88,8 @@ struct WindowController<'a> {
     fragment_shader: gl2::GLuint,
     shader_program: gl2::GLuint,
     uni_color: gl2::GLint,
+    buffer_width: uint,
+    buffer_height: uint,
 }
 
 impl<'a> WindowController<'a> {
@@ -100,13 +102,17 @@ impl<'a> WindowController<'a> {
                                         fragment_shader: 0,
                                         shader_program: 0,
                                         uni_color: 0,
+                                        buffer_width: 0,
+                                        buffer_height: 0,
         };
 
-        let (width, height) =  wc.window.get_framebuffer_size();
+        let (w, h) =  wc.window.get_framebuffer_size();
+        wc.buffer_width = w as uint;
+        wc.buffer_height = h as uint;
 
-        gl2::viewport(0, 0, width as i32, height as i32);
+        gl2::viewport(0, 0, wc.buffer_width as i32, wc.buffer_height as i32);
 
-        println!("Viewport: {} x {}", width, height);
+        println!("Viewport: {} x {}", wc.buffer_width, wc.buffer_height);
 
         wc.vertices = ~[
             0.0,  0.5, 1.0, 0.0, 0.0,
@@ -243,6 +249,19 @@ impl<'a> WindowController<'a> {
         wc
     }
 
+    // Rescale pixel coord (x,y) into cspace
+    fn scale_coords(&self, x: uint, y: uint) -> (f32, f32) {
+        let x0 = -2.5f32;
+        let x1 =  1.0f32;
+        let y0 = -1.0f32;
+        let y1 =  1.0f32;
+
+        let xx = (x as f32) / (self.buffer_width  as f32) * (x1-x0) + x0;
+        let yy = (y as f32) / (self.buffer_height as f32) * (y1-y0) + y0;
+
+        (xx, yy)
+    }
+
     fn draw(&self) {
 
         // Clear
@@ -307,33 +326,66 @@ impl<'a> WindowController<'a> {
 //----------------------------------------------------------------------------
 
 struct MandelEngine {
-    re0: f32,
-    re1: f32,
-    im0: f32,
-    im1: f32,
-    delta: f32,
+    buffer_width: uint,
+    buffer_height: uint,
 }
 
 impl MandelEngine {
 
     fn new() -> MandelEngine {
-        MandelEngine { re0: -2.0, re1: 2.0, im0: -2.0, im1: 2.0, delta: 0.1 }
+        MandelEngine { buffer_width: 640,
+                       buffer_height: 480,
+        }
+    }
+
+    // Rescale pixel coord (x,y) into cspace
+    fn scale_coords(&self, x: uint, y: uint) -> (f32, f32) {
+        let x0 = -2.5f32;
+        let x1 =  1.0f32;
+        let y0 = -1.0f32;
+        let y1 =  1.0f32;
+
+        let xx = (x as f32) / (self.buffer_width  as f32) * (x1-x0) + x0;
+        let yy = (y as f32) / (self.buffer_height as f32) * (y1-y0) + y0;
+
+        (xx, yy)
     }
 
     // Evalute entire region
     fn process(&self) {
-        println!("+++ process: re: {}..{} im: {}..{}", self.re0, self.re1, self.im0, self.im1);
-        // @todo range_step doesn't work for floats :( It needs CheckedAdd for f32. So we do loops manually.
-        let mut re = self.re0;
-        while re < self.re1 {
-            let mut im = self.im0;
-            while im < self.im1 {
-                let z = Cmplx::new(re as f64, im as f64);
-                println!("z={}+{}i, c={}", re, im, self.mandel(z));
-                im += self.delta;
+
+        let max_iteration = 1000;
+
+        println!("+++ process");
+
+        // Process each pixel
+        for py in range(0, self.buffer_height) {
+            for px in range(0, self.buffer_width) {
+
+                // Project pixels into Mandelbrot domain
+                let (x0, y0) = self.scale_coords(px, py);
+
+                println!("({},{}) -> ({}, {})", px, py, x0, y0);
+
+                let mut x = 0.0f32;
+                let mut y = 0.0f32;
+                let mut iteration = 0;
+
+                // Iterate!
+                while (x*x + y*y < 2.0*2.0) && (iteration < max_iteration) {
+                    let xtemp = x*x - y*y + x0;
+                    y = 2.0*x*y + y0;
+                    x = xtemp;
+
+                    iteration += 1;
+                }
+
+                // Colour and plot
+                //color = palette[iteration];
+                //plot[px][py] = colour;
             }
-            re += self.delta;
         }
+
         println!("--- process");
     }
 
