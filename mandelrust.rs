@@ -387,6 +387,7 @@ fn main() {
             for event in window.flush_events() {
                 win_ctrl.handle_window_event(&window, event);
             }
+            win_ctrl.draw();
         }
     });
 }
