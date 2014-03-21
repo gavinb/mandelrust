@@ -30,6 +30,9 @@ use opengles::gl2;
 use cgmath::vector::Vec3;
 use cgmath::aabb::Aabb3;
 
+use std::comm::{Sender, Receiver, channel};
+use std::vec_ng::Vec;
+
 use num::complex::{Cmplx, Complex64};
 
 use std::num::{sin};
@@ -328,13 +331,16 @@ impl<'a> WindowController<'a> {
 struct MandelEngine {
     buffer_width: uint,
     buffer_height: uint,
+    buffer: Vec<u32>,// RGBA
 }
 
 impl MandelEngine {
 
-    fn new() -> MandelEngine {
-        MandelEngine { buffer_width: 640,
-                       buffer_height: 480,
+    fn new(w: uint, h: uint) -> MandelEngine {
+        MandelEngine {
+            buffer_width: w,
+            buffer_height: h,
+            buffer: Vec::with_capacity(w*h), // Monochrome, 8-bit
         }
     }
 
@@ -352,11 +358,11 @@ impl MandelEngine {
     }
 
     // Evalute entire region
-    fn process(&self) {
+    fn process(&mut self) {
 
         let max_iteration = 1000;
 
-        println!("+++ process");
+        println!("+++ process in {} bytes", self.buffer.capacity());
 
         // Process each pixel
         for py in range(0, self.buffer_height) {
@@ -382,7 +388,9 @@ impl MandelEngine {
 
                 // Colour and plot
                 //color = palette[iteration];
-                //plot[px][py] = colour;
+                let color = iteration;
+                let ofs = px+self.buffer_width*py;
+//                *self.buffer.get_mut(ofs) = color;
             }
         }
 
@@ -401,6 +409,14 @@ impl MandelEngine {
         }
         return maxiter;
     }
+}
+
+//----------------------------------------------------------------------------
+
+fn start_engine(tx: &Sender<uint>) {
+    let mut engine = MandelEngine::new(1920, 960);
+    engine.process();
+//    tx.send(42);
 }
 
 //----------------------------------------------------------------------------
@@ -431,8 +447,14 @@ fn main() {
 
         let win_ctrl = ~WindowController::new(&window);
 
-        let engine = MandelEngine::new();
-        native::task::spawn( proc() { engine.process(); });
+        let (tx, rx): (Sender<uint>, Receiver<uint>) = channel();
+
+        native::task::spawn( proc() {
+            start_engine(&tx);
+        });
+
+//         let indata = rx.recv();
+//         println!("indata {}", indata);
 
         while !window.should_close() {
             glfw::poll_events();
