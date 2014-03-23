@@ -13,7 +13,7 @@
 //
 //============================================================================
 
-#[license = "BSD"];
+#[license = "MIT"];
 
 #[allow(deprecated_owned_vector)];
 #[allow(dead_code)];
@@ -32,6 +32,8 @@ use cgmath::aabb::Aabb3;
 
 use std::comm::{Sender, Receiver, channel};
 use std::vec_ng::Vec;
+use std::io::File;
+use std::path::Path;
 
 use num::complex::{Cmplx, Complex64};
 
@@ -331,7 +333,7 @@ impl<'a> WindowController<'a> {
 struct MandelEngine {
     buffer_width: uint,
     buffer_height: uint,
-    buffer: Vec<u32>,// RGBA
+    buffer: Vec<u8>,// RGBA
 }
 
 impl MandelEngine {
@@ -360,7 +362,7 @@ impl MandelEngine {
     // Evalute entire region
     fn process(&mut self) {
 
-        let max_iteration = 1000;
+        let max_iteration = 255;
 
         println!("+++ process in {} bytes", self.buffer.capacity());
 
@@ -371,17 +373,17 @@ impl MandelEngine {
                 // Project pixels into Mandelbrot domain
                 let (x0, y0) = self.scale_coords(px, py);
 
-                println!("({},{}) -> ({}, {})", px, py, x0, y0);
+                //println!("({},{}) -> ({}, {})", px, py, x0, y0);
 
                 let mut x = 0.0f32;
                 let mut y = 0.0f32;
                 let mut iteration = 0;
 
                 // Iterate!
-                while (x*x + y*y < 2.0*2.0) && (iteration < max_iteration) {
-                    let xtemp = x*x - y*y + x0;
+                while (x*x + y*y < 4.0) && (iteration < max_iteration) {
+                    let x1 = x*x - y*y + x0;
                     y = 2.0*x*y + y0;
-                    x = xtemp;
+                    x = x1;
 
                     iteration += 1;
                 }
@@ -391,10 +393,16 @@ impl MandelEngine {
                 let color = iteration;
                 let ofs = px+self.buffer_width*py;
 //                *self.buffer.get_mut(ofs) = color;
+                self.buffer.push(color);
             }
         }
 
-        println!("--- process");
+        // Save
+        let filename = "m1.pgm";
+        let mut file = File::create(&Path::new(filename));
+        file.write(bytes!("P5\n"));
+        file.write_str(format!("{} {}\n255\n", self.buffer_width, self.buffer_height));
+        file.write(self.buffer.slice(0, self.buffer.capacity()));
     }
 
     // Evaluate a single point
