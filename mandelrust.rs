@@ -330,19 +330,37 @@ impl<'a> WindowController<'a> {
 
 //----------------------------------------------------------------------------
 
+type RGB8 = (u8, u8, u8);
+
 struct MandelEngine {
     buffer_width: uint,
     buffer_height: uint,
     buffer: Vec<u8>,// RGBA
+    palette: Vec<RGB8>,
 }
 
 impl MandelEngine {
 
     fn new(w: uint, h: uint) -> MandelEngine {
+
+        // Init palette
+        let mut p: Vec<RGB8> = Vec::with_capacity(256*3);
+        for r in range(0, 256) {
+            p.push((r as u8,0,0));
+            println!("{}", r);
+        }
+        for g in range(0, 256) {
+            p.push((0,g as u8,0));
+        }
+        for b in range(0, 255) {
+            p.push((0,0,b as u8));
+        }
+
         MandelEngine {
             buffer_width: w,
             buffer_height: h,
-            buffer: Vec::with_capacity(w*h), // Monochrome, 8-bit
+            buffer: Vec::with_capacity(w*h*3), // RGB 8-bit
+            palette: p
         }
     }
 
@@ -362,7 +380,7 @@ impl MandelEngine {
     // Evalute entire region
     fn process(&mut self) {
 
-        let max_iteration = 255;
+        let max_iteration = 1024;
 
         println!("+++ process in {} bytes", self.buffer.capacity());
 
@@ -389,18 +407,20 @@ impl MandelEngine {
                 }
 
                 // Colour and plot
-                //color = palette[iteration];
-                let color = iteration;
+                let color = self.palette.get(iteration % 765);
+                let (r,g,b) = *color;
                 let ofs = px+self.buffer_width*py;
-//                *self.buffer.get_mut(ofs) = color;
-                self.buffer.push(color);
+
+                self.buffer.push(r);
+                self.buffer.push(g);
+                self.buffer.push(b);
             }
         }
 
         // Save
         let filename = "m1.pgm";
         let mut file = File::create(&Path::new(filename));
-        file.write(bytes!("P5\n"));
+        file.write(bytes!("P6\n"));
         file.write_str(format!("{} {}\n255\n", self.buffer_width, self.buffer_height));
         file.write(self.buffer.slice(0, self.buffer.capacity()));
     }
