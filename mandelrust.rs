@@ -329,13 +329,6 @@ impl<'a> WindowController<'a> {
                 let vbo = gl2::gen_buffers(1)[0];
                 gl2::bind_buffer(gl2::ARRAY_BUFFER, vbo);
 
-                // Save
-                let filename = "mx.ppm";
-                let mut file = File::create(&Path::new(filename));
-                file.write(bytes!("P6\n"));
-                file.write_str(format!("{} {}\n255\n", self.buffer_width, self.buffer_height));
-                file.write(img.slice(0, img.capacity()));
-
                 // Setup tex
                 let imgbuf = Some(img.as_slice());
                 let texture_id = gl2::gen_textures(1)[0];
@@ -391,10 +384,12 @@ impl<'a> WindowController<'a> {
         let progress_ch = self.chan_engine_to_wc.take().expect("no engine_to_wc chan");
         let cmd_ch = self.chan_engine_from_wc.take().expect("no engine_from_wc chan");
 
+        let (w,h) = (self.buffer_width, self.buffer_height);
+
         native::task::spawn( proc() {
 
             println!("start_engine");
-            let mut engine = MandelEngine::new(1920, 960);
+            let mut engine = MandelEngine::new(w, h);
             println!("process");
             engine.serve(&cmd_ch, &progress_ch);
             println!("done");
@@ -414,13 +409,6 @@ impl<'a> WindowController<'a> {
                             Startup => println!("Startup..."),
                             Processing(progress) => println!("Processing {}", progress),
                             Complete(img) => {
-                                // Save
-                                let filename = "mr.ppm";
-                                let mut file = File::create(&Path::new(filename));
-                                file.write(bytes!("P6\n"));
-                                file.write_str(format!("{} {}\n255\n", self.buffer_width, self.buffer_height));
-                                file.write(img.slice(0, img.capacity()));
-
                                 println!("Complete!");
                                 self.image = Some(img);
                             },
@@ -577,7 +565,7 @@ impl MandelEngine {
         }
 
         // Save
-        let filename = "m1.ppm";
+        let filename = "mt.ppm";
         let mut file = File::create(&Path::new(filename));
         file.write(bytes!("P6\n"));
         file.write_str(format!("{} {}\n255\n", self.buffer_width, self.buffer_height));
