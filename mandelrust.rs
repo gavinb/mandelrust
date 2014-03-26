@@ -387,8 +387,6 @@ impl<'a> WindowController<'a> {
 
     fn start_engine(&mut self) {
 
-        println!("start_engine");
-
         let progress_ch = self.chan_engine_to_wc.take().expect("no engine_to_wc chan");
         let cmd_ch = self.chan_engine_from_wc.take().expect("no engine_from_wc chan");
 
@@ -396,11 +394,8 @@ impl<'a> WindowController<'a> {
 
         native::task::spawn( proc() {
 
-            println!("start_engine");
             let mut engine = MandelEngine::new(w, h);
-            println!("process");
             engine.serve(&cmd_ch, &progress_ch);
-            println!("done");
         });
 
         let cmd_ch = self.chan_wc_to_engine.get_ref();
@@ -417,7 +412,7 @@ impl<'a> WindowController<'a> {
                             Startup => println!("Startup..."),
                             Processing(progress) => println!("Processing {}", progress),
                             Complete(img) => {
-                                println!("Complete!");
+                                println!("Render Complete!");
                                 self.image = Some(img);
                             },
                             Error(code) => println!("Error %08x"),
@@ -436,7 +431,7 @@ impl<'a> WindowController<'a> {
             glfw::CloseEvent => println!("Time: {}, Window close requested.", time),
 
             glfw::KeyEvent(key, scancode, action, mods) => {
-                println!("Time: {}, Key: {}, ScanCode: {}, Action: {}, Modifiers: [{}]", time, key, scancode, action, mods);
+//                println!("Time: {}, Key: {}, ScanCode: {}, Action: {}, Modifiers: [{}]", time, key, scancode, action, mods);
                 match (key, action) {
                     (glfw::KeySpace, glfw::Press) => cmd_ch.send(Render),
                     (glfw::KeyEqual, glfw::Press) => {
@@ -539,9 +534,8 @@ impl MandelEngine {
         let delta = 0.1;
         let mut running = true;
         while running {
-            println!("engine: waiting for command");
             let cmd = cmd_chan.recv();
-            println!("engine:command {}", cmd);
+            println!("engine: command {}", cmd);
             match cmd {
                 UpdateRegion(re0, re1, im0, im1) => {
                     self.re0 = re0; self.re1 = re1; self.im0 = im0; self.im1 = im1;
@@ -579,7 +573,7 @@ impl MandelEngine {
             }
         }
 
-        println!("engine: done serving");
+        println!("engine: shutdown");
     }
 
     // Evalute entire region
