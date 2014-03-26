@@ -72,7 +72,6 @@ uniform sampler2D tex;
 
 void main()
 {
-//    outColor = vec4(Texcoord, 1.0, 1.0);
     outColor = texture(tex, Texcoord) * vec4(8,8,8,1);
 }
 ";
@@ -330,6 +329,13 @@ impl<'a> WindowController<'a> {
                 let vbo = gl2::gen_buffers(1)[0];
                 gl2::bind_buffer(gl2::ARRAY_BUFFER, vbo);
 
+                // Save
+                let filename = "mx.ppm";
+                let mut file = File::create(&Path::new(filename));
+                file.write(bytes!("P6\n"));
+                file.write_str(format!("{} {}\n255\n", self.buffer_width, self.buffer_height));
+                file.write(img.slice(0, img.capacity()));
+
                 // Setup tex
                 let imgbuf = Some(img.as_slice());
                 let texture_id = gl2::gen_textures(1)[0];
@@ -408,6 +414,13 @@ impl<'a> WindowController<'a> {
                             Startup => println!("Startup..."),
                             Processing(progress) => println!("Processing {}", progress),
                             Complete(img) => {
+                                // Save
+                                let filename = "mr.ppm";
+                                let mut file = File::create(&Path::new(filename));
+                                file.write(bytes!("P6\n"));
+                                file.write_str(format!("{} {}\n255\n", self.buffer_width, self.buffer_height));
+                                file.write(img.slice(0, img.capacity()));
+
                                 println!("Complete!");
                                 self.image = Some(img);
                             },
@@ -525,7 +538,7 @@ impl MandelEngine {
 
         let max_iteration = 1024;
 
-        println!("+++ process in {} bytes", img.capacity());
+        println!("+++ process {}x{} RGB8 in {} bytes", self.buffer_width, self.buffer_height, img.capacity());
 
         progress_chan.send(Startup);
 
@@ -562,6 +575,13 @@ impl MandelEngine {
                 progress_chan.send(Processing(py));
             }
         }
+
+        // Save
+        let filename = "m1.ppm";
+        let mut file = File::create(&Path::new(filename));
+        file.write(bytes!("P6\n"));
+        file.write_str(format!("{} {}\n255\n", self.buffer_width, self.buffer_height));
+        file.write(img.slice(0, img.capacity()));
 
         progress_chan.send(Complete(img));
     }
