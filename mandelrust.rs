@@ -120,6 +120,7 @@ struct WindowController<'a> {
     vertex_shader: gl2::GLuint,
     fragment_shader: gl2::GLuint,
     shader_program: gl2::GLuint,
+    texture_id: gl2::GLuint,
     uni_color: gl2::GLint,
     buffer_width: uint,
     buffer_height: uint,
@@ -145,6 +146,7 @@ impl<'a> WindowController<'a> {
                                         vertex_shader: 0,
                                         fragment_shader: 0,
                                         shader_program: 0,
+                                        texture_id: 0,
                                         uni_color: 0,
                                         buffer_width: 0,
                                         buffer_height: 0,
@@ -156,10 +158,8 @@ impl<'a> WindowController<'a> {
         };
 
         let (w, h) =  wc.window.get_framebuffer_size();
-//        wc.buffer_width = w as uint;
-//        wc.buffer_height = h as uint;
-        wc.buffer_width = 320;
-        wc.buffer_height = 200;
+        wc.buffer_width = w as uint;
+        wc.buffer_height = h as uint;
 
         gl2::viewport(0, 0, wc.buffer_width as i32, wc.buffer_height as i32);
 
@@ -295,6 +295,26 @@ impl<'a> WindowController<'a> {
             fail!("attrib err = {:x}", err);
         }
 
+        // Setup tex
+        wc.texture_id = gl2::gen_textures(1)[0];
+        gl2::bind_texture(gl2::TEXTURE_2D, wc.texture_id);
+        gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_WRAP_S, gl2::CLAMP_TO_EDGE as i32);
+        gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_WRAP_T, gl2::CLAMP_TO_EDGE as i32);
+        gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_MIN_FILTER, gl2::LINEAR as i32);
+        gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_MAG_FILTER, gl2::LINEAR as i32);
+
+        // Allocate texture
+        gl2::tex_image_2d(gl2::TEXTURE_2D, 0, gl2::RGB as i32,
+                          wc.buffer_width as i32, wc.buffer_height as i32, 0,
+                          gl2::RGB as u32, gl2::UNSIGNED_BYTE, None);
+
+        let err = gl2::get_error();
+        if err != 0 {
+            fail!("tex err = {:x}", err);
+        }
+
+        //
+
         wc
     }
 
@@ -331,36 +351,8 @@ impl<'a> WindowController<'a> {
         }
 
         // Render texture
-        match self.image {
-            Some(ref img) => {
-                // Setup verts
-                let vbo = gl2::gen_buffers(1)[0];
-                gl2::bind_buffer(gl2::ARRAY_BUFFER, vbo);
-
-                // Setup tex
-                let imgbuf = Some(img.as_slice());
-                let texture_id = gl2::gen_textures(1)[0];
-                gl2::bind_texture(gl2::TEXTURE_2D, texture_id);
-                gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_WRAP_S, gl2::CLAMP_TO_EDGE as i32);
-                gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_WRAP_T, gl2::CLAMP_TO_EDGE as i32);
-                gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_MIN_FILTER, gl2::LINEAR as i32);
-                gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_MAG_FILTER, gl2::LINEAR as i32);
-
-                // Apply data
-                gl2::tex_image_2d(gl2::TEXTURE_2D, 0, gl2::RGB as i32,
-                                  self.buffer_width as i32, self.buffer_height as i32, 0,
-                                  gl2::RGB as u32, gl2::UNSIGNED_BYTE, imgbuf);
-
+        if self.texture_id >= 0 {
                 gl2::draw_arrays(gl2::TRIANGLE_STRIP, 0, 4);
-
-                // Cleanup
-                gl2::bind_texture(gl2::TEXTURE_2D, 0);
-                gl2::delete_textures([texture_id]);
-
-                gl2::bind_buffer(gl2::ARRAY_BUFFER, vbo);
-                gl2::delete_buffers([vbo]);
-            },
-            _ => (),
         }
 
         let err = gl2::get_error();
@@ -374,6 +366,9 @@ impl<'a> WindowController<'a> {
     fn uninit(&mut self) {
 
         // Cleanup
+
+        gl2::bind_texture(gl2::TEXTURE_2D, 0);
+        gl2::delete_textures([self.texture_id]);
 
         gl2::delete_program(self.shader_program);
         gl2::delete_shader(self.fragment_shader);
@@ -413,7 +408,12 @@ impl<'a> WindowController<'a> {
                             Processing(progress) => println!("Processing {}", progress),
                             Complete(img) => {
                                 println!("Render Complete!");
-                                self.image = Some(img);
+                                //self.image = Some(img);
+                                let imgbuf = Some(img.as_slice());
+                                gl2::tex_sub_image_2d(gl2::TEXTURE_2D, 0,
+                                                      0, 0,
+                                                      self.buffer_width as i32, self.buffer_height as i32,
+                                                      gl2::RGB as u32, gl2::UNSIGNED_BYTE, imgbuf);
                             },
                             Error(code) => println!("Error %08x"),
                         },
