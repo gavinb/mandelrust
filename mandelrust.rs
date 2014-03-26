@@ -30,7 +30,7 @@ use opengles::gl2;
 use cgmath::vector::Vec3;
 use cgmath::aabb::Aabb3;
 
-use std::comm::{Sender, Receiver, channel};
+use std::comm::{Sender, Receiver, TryRecvResult, Data, channel};
 use std::vec_ng::Vec;
 use std::io::File;
 use std::path::Path;
@@ -95,10 +95,20 @@ struct WindowController<'a> {
     uni_color: gl2::GLint,
     buffer_width: uint,
     buffer_height: uint,
+    chan_wc_to_engine: Option<Sender<uint>>,
+    chan_wc_from_engine: Option<Receiver<uint>>,
+    chan_engine_to_wc: Option<Sender<uint>>,
+    chan_engine_from_wc: Option<Receiver<uint>>,
 }
 
 impl<'a> WindowController<'a> {
     fn new(window: &'a glfw::Window) -> WindowController<'a> {
+
+        // WindowController === Engine
+        // (Sender<T>, Receiver<T>)
+        let (chan_wc_to_engine, chan_engine_from_wc) = channel();
+        let (chan_engine_to_wc, chan_wc_from_engine) = channel();
+
         let mut wc = WindowController { window: window, 
                                         vao: ~[0],
                                         vbo: ~[0],
@@ -109,6 +119,10 @@ impl<'a> WindowController<'a> {
                                         uni_color: 0,
                                         buffer_width: 0,
                                         buffer_height: 0,
+                                        chan_wc_to_engine: Some(chan_wc_to_engine),
+                                        chan_wc_from_engine: Some(chan_wc_from_engine),
+                                        chan_engine_to_wc: Some(chan_engine_to_wc),
+                                        chan_engine_from_wc: Some(chan_engine_from_wc),
         };
 
         let (w, h) =  wc.window.get_framebuffer_size();
@@ -305,6 +319,36 @@ impl<'a> WindowController<'a> {
         //gl2::delete_vertex_arrays(vao);
     }
 
+    fn start_engine(&mut self) {
+
+        println!("start_engine");
+
+        let ch = self.chan_engine_to_wc.take().expect("no engine chan");
+
+        native::task::spawn( proc() {
+
+            println!("start_engine");
+            let mut engine = MandelEngine::new(1920, 960);
+            println!("process");
+            engine.process(&ch);
+            println!("done");
+        });
+
+    }
+
+    fn maybe_update_display(&mut self) {
+        match self.chan_wc_from_engine {
+            Some(ref ch) => {
+                let indata = ch.try_recv();
+                match indata {
+                    Data(d) => println!("indata {}", d),
+                    _ => ()
+                }
+            },
+            None => (),
+        }
+    }
+
     fn handle_window_event(&self, window: &glfw::Window, (time, event): (f64, glfw::WindowEvent)) {
         match event {
 
@@ -337,6 +381,10 @@ struct MandelEngine {
     buffer_height: uint,
     buffer: Vec<u8>,// RGBA
     palette: Vec<RGB8>,
+    re0: f32,
+    re1: f32,
+    im0: f32,
+    im1: f32,
 }
 
 impl MandelEngine {
@@ -347,7 +395,6 @@ impl MandelEngine {
         let mut p: Vec<RGB8> = Vec::with_capacity(256*3);
         for r in range(0, 256) {
             p.push((r as u8,0,0));
-            println!("{}", r);
         }
         for g in range(0, 256) {
             p.push((0,g as u8,0));
@@ -357,6 +404,10 @@ impl MandelEngine {
         }
 
         MandelEngine {
+            re0: -2.5f32,
+            re1:  1.0f32,
+            im0: -1.0f32,
+            im1:  1.0f32,
             buffer_width: w,
             buffer_height: h,
             buffer: Vec::with_capacity(w*h*3), // RGB 8-bit
@@ -366,10 +417,10 @@ impl MandelEngine {
 
     // Rescale pixel coord (x,y) into cspace
     fn scale_coords(&self, x: uint, y: uint) -> (f32, f32) {
-        let x0 = -2.5f32;
-        let x1 =  1.0f32;
-        let y0 = -1.0f32;
-        let y1 =  1.0f32;
+        let x0 = self.re0;
+        let x1 = self.re1;
+        let y0 = self.im0;
+        let y1 = self.im1;
 
         let xx = (x as f32) / (self.buffer_width  as f32) * (x1-x0) + x0;
         let yy = (y as f32) / (self.buffer_height as f32) * (y1-y0) + y0;
@@ -378,7 +429,7 @@ impl MandelEngine {
     }
 
     // Evalute entire region
-    fn process(&mut self) {
+    fn process(&mut self, progress_chan: &Sender<uint>) {
 
         let max_iteration = 1024;
 
@@ -390,8 +441,6 @@ impl MandelEngine {
 
                 // Project pixels into Mandelbrot domain
                 let (x0, y0) = self.scale_coords(px, py);
-
-                //println!("({},{}) -> ({}, {})", px, py, x0, y0);
 
                 let mut x = 0.0f32;
                 let mut y = 0.0f32;
@@ -415,6 +464,9 @@ impl MandelEngine {
                 self.buffer.push(g);
                 self.buffer.push(b);
             }
+            if py % 100 == 0 {
+                progress_chan.send(py);
+            }
         }
 
         // Save
@@ -437,14 +489,6 @@ impl MandelEngine {
         }
         return maxiter;
     }
-}
-
-//----------------------------------------------------------------------------
-
-fn start_engine(tx: &Sender<uint>) {
-    let mut engine = MandelEngine::new(1920, 960);
-    engine.process();
-//    tx.send(42);
 }
 
 //----------------------------------------------------------------------------
@@ -473,22 +517,16 @@ fn main() {
 
         window.make_context_current();
 
-        let win_ctrl = ~WindowController::new(&window);
+        let mut win_ctrl = ~WindowController::new(&window);
 
-        let (tx, rx): (Sender<uint>, Receiver<uint>) = channel();
-
-        native::task::spawn( proc() {
-            start_engine(&tx);
-        });
-
-//         let indata = rx.recv();
-//         println!("indata {}", indata);
+        win_ctrl.start_engine();
 
         while !window.should_close() {
             glfw::poll_events();
             for event in window.flush_events() {
                 win_ctrl.handle_window_event(&window, event);
             }
+            win_ctrl.maybe_update_display();
             win_ctrl.draw();
         }
     });
