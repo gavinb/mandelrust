@@ -75,11 +75,21 @@ void main()
 
 //----------------------------------------------------------------------------
 
+#[deriving(Show)]
 enum EngineStatus {
     Startup,
     Processing(uint),
     Complete,
     Error(uint)
+}
+
+//----------------------------------------------------------------------------
+
+#[deriving(Show)]
+enum EngineCommand {
+    UpdateRegion(f32, f32, f32, f32),
+    Render,
+    Shutdown,
 }
 
 //----------------------------------------------------------------------------
@@ -104,10 +114,10 @@ struct WindowController<'a> {
     uni_color: gl2::GLint,
     buffer_width: uint,
     buffer_height: uint,
-    chan_wc_to_engine: Option<Sender<uint>>,
+    chan_wc_to_engine: Option<Sender<EngineCommand>>,
     chan_wc_from_engine: Option<Receiver<EngineStatus>>,
     chan_engine_to_wc: Option<Sender<EngineStatus>>,
-    chan_engine_from_wc: Option<Receiver<uint>>,
+    chan_engine_from_wc: Option<Receiver<EngineCommand>>,
 }
 
 impl<'a> WindowController<'a> {
@@ -332,17 +342,21 @@ impl<'a> WindowController<'a> {
 
         println!("start_engine");
 
-        let ch = self.chan_engine_to_wc.take().expect("no engine chan");
+        let progress_ch = self.chan_engine_to_wc.take().expect("no engine_to_wc chan");
+        let cmd_ch = self.chan_engine_from_wc.take().expect("no engine_from_wc chan");
 
         native::task::spawn( proc() {
 
             println!("start_engine");
             let mut engine = MandelEngine::new(1920, 960);
             println!("process");
-            engine.process(&ch);
+            engine.serve(&cmd_ch, &progress_ch);
             println!("done");
         });
 
+        let cmd_ch = self.chan_wc_to_engine.get_mut_ref();
+        cmd_ch.send(UpdateRegion(-1.0, 0.0, 0.0, 0.5));
+        cmd_ch.send(Render);
     }
 
     fn maybe_update_display(&mut self) {
@@ -441,6 +455,22 @@ impl MandelEngine {
         let yy = (y as f32) / (self.buffer_height as f32) * (y1-y0) + y0;
 
         (xx, yy)
+    }
+
+    fn serve(&mut self, cmd_chan: &Receiver<EngineCommand>, progress_chan: &Sender<EngineStatus>) {
+        let mut running = true;
+        while running {
+            println!("engine: waiting for command");
+            let cmd = cmd_chan.recv();
+            println!("engine: got command {}", cmd);
+            match cmd {
+                UpdateRegion(re0, re1, im0, im1) => println!("UpdateRegion: {}..{}, {}..{}", re0, re1, im0, im1),
+                Render => self.process(progress_chan),
+                Shutdown => running = false,
+            }
+        }
+
+        println!("engine: done serving");
     }
 
     // Evalute entire region
