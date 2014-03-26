@@ -91,6 +91,8 @@ enum EngineStatus {
 #[deriving(Show)]
 enum EngineCommand {
     UpdateRegion(f32, f32, f32, f32),
+    ZoomIn,
+    ZoomOut,
     Render,
     Shutdown,
 }
@@ -395,8 +397,8 @@ impl<'a> WindowController<'a> {
             println!("done");
         });
 
-        let cmd_ch = self.chan_wc_to_engine.get_mut_ref();
-        cmd_ch.send(UpdateRegion(-1.0, 0.0, 0.0, 0.5));
+        let cmd_ch = self.chan_wc_to_engine.get_ref();
+        cmd_ch.send(Render);
     }
 
     fn maybe_update_display(&mut self) {
@@ -431,6 +433,14 @@ impl<'a> WindowController<'a> {
                 println!("Time: {}, Key: {}, ScanCode: {}, Action: {}, Modifiers: [{}]", time, key, scancode, action, mods);
                 match (key, action) {
                     (glfw::KeySpace, glfw::Press) => cmd_ch.send(Render),
+                    (glfw::KeyEqual, glfw::Press) => {
+                        cmd_ch.send(ZoomIn);
+                        cmd_ch.send(Render);
+                    },
+                    (glfw::KeyMinus, glfw::Press) => {
+                        cmd_ch.send(ZoomOut);
+                        cmd_ch.send(Render);
+                    },
                     (glfw::KeyEscape, glfw::Press) => {
                         cmd_ch.send(Shutdown);
                         window.set_should_close(true);
@@ -504,13 +514,28 @@ impl MandelEngine {
     }
 
     fn serve(&mut self, cmd_chan: &Receiver<EngineCommand>, progress_chan: &Sender<EngineStatus>) {
+        let delta = 0.2;
         let mut running = true;
         while running {
             println!("engine: waiting for command");
             let cmd = cmd_chan.recv();
             println!("engine:command {}", cmd);
             match cmd {
-                UpdateRegion(re0, re1, im0, im1) => println!("UpdateRegion: {}..{}, {}..{}", re0, re1, im0, im1),
+                UpdateRegion(re0, re1, im0, im1) => {
+                    self.re0 = re0; self.re1 = re1; self.im0 = im0; self.im1 = im1;
+                },
+                ZoomIn => {
+                    self.re0 += delta;
+                    self.re1 -= delta;
+                    self.im0 += delta;
+                    self.im1 -= delta;
+                },
+                ZoomOut => {
+                    self.re0 -= delta;
+                    self.re1 += delta;
+                    self.im0 -= delta;
+                    self.im1 += delta;
+                },
                 Render => self.process(progress_chan),
                 Shutdown => running = false,
             }
