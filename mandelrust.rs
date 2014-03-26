@@ -93,6 +93,10 @@ enum EngineCommand {
     UpdateRegion(f32, f32, f32, f32),
     ZoomIn,
     ZoomOut,
+    PanLeft,
+    PanRight,
+    PanUp,
+    PanDown,
     Render,
     Shutdown,
 }
@@ -152,8 +156,10 @@ impl<'a> WindowController<'a> {
         };
 
         let (w, h) =  wc.window.get_framebuffer_size();
-        wc.buffer_width = w as uint;
-        wc.buffer_height = h as uint;
+//        wc.buffer_width = w as uint;
+//        wc.buffer_height = h as uint;
+        wc.buffer_width = 320;
+        wc.buffer_height = 200;
 
         gl2::viewport(0, 0, wc.buffer_width as i32, wc.buffer_height as i32);
 
@@ -441,6 +447,22 @@ impl<'a> WindowController<'a> {
                         cmd_ch.send(ZoomOut);
                         cmd_ch.send(Render);
                     },
+                    (glfw::KeyLeft, glfw::Press) => {
+                        cmd_ch.send(PanLeft);
+                        cmd_ch.send(Render);
+                    },
+                    (glfw::KeyRight, glfw::Press) => {
+                        cmd_ch.send(PanRight);
+                        cmd_ch.send(Render);
+                    },
+                    (glfw::KeyUp, glfw::Press) => {
+                        cmd_ch.send(PanUp);
+                        cmd_ch.send(Render);
+                    },
+                    (glfw::KeyDown, glfw::Press) => {
+                        cmd_ch.send(PanDown);
+                        cmd_ch.send(Render);
+                    },
                     (glfw::KeyEscape, glfw::Press) => {
                         cmd_ch.send(Shutdown);
                         window.set_should_close(true);
@@ -514,7 +536,7 @@ impl MandelEngine {
     }
 
     fn serve(&mut self, cmd_chan: &Receiver<EngineCommand>, progress_chan: &Sender<EngineStatus>) {
-        let delta = 0.2;
+        let delta = 0.1;
         let mut running = true;
         while running {
             println!("engine: waiting for command");
@@ -534,6 +556,22 @@ impl MandelEngine {
                     self.re0 -= delta;
                     self.re1 += delta;
                     self.im0 -= delta;
+                    self.im1 += delta;
+                },
+                PanLeft => {
+                    self.re0 += delta;
+                    self.re1 += delta;
+                },
+                PanRight => {
+                    self.re0 -= delta;
+                    self.re1 -= delta;
+                },
+                PanUp => {
+                    self.im0 -= delta;
+                    self.im1 -= delta;
+                },
+                PanDown => {
+                    self.im0 += delta;
                     self.im1 += delta;
                 },
                 Render => self.process(progress_chan),
