@@ -49,14 +49,14 @@ static vertex_shader_source: &'static str = "
 #version 150
 
 in vec2 position;
-in vec3 color;
+in vec2 texcoord;
 
-out vec3 Color;
+out vec2 Texcoord;
 
 void main()
 {
-    Color = color;
     gl_Position = vec4(position, 0.0, 1.0);
+    Texcoord = texcoord;
 }
 ";
 
@@ -64,12 +64,16 @@ static fragment_shader_source: &'static str = "
 
 #version 150
 
-in vec3 Color;
+in vec2 Texcoord;
+
 out vec4 outColor;
+
+uniform sampler2D tex;
 
 void main()
 {
-    outColor = vec4(Color, 1.0);
+//    outColor = vec4(Texcoord, 1.0, 1.0);
+    outColor = texture(tex, Texcoord) * vec4(8,8,8,1);
 }
 ";
 
@@ -79,7 +83,7 @@ void main()
 enum EngineStatus {
     Startup,
     Processing(uint),
-    Complete,
+    Complete(Vec<u8>),
     Error(uint)
 }
 
@@ -118,6 +122,7 @@ struct WindowController<'a> {
     chan_wc_from_engine: Option<Receiver<EngineStatus>>,
     chan_engine_to_wc: Option<Sender<EngineStatus>>,
     chan_engine_from_wc: Option<Receiver<EngineCommand>>,
+    image: Option<Vec<u8>>,
 }
 
 impl<'a> WindowController<'a> {
@@ -142,6 +147,7 @@ impl<'a> WindowController<'a> {
                                         chan_wc_from_engine: Some(chan_wc_from_engine),
                                         chan_engine_to_wc: Some(chan_engine_to_wc),
                                         chan_engine_from_wc: Some(chan_engine_from_wc),
+                                        image: None,
         };
 
         let (w, h) =  wc.window.get_framebuffer_size();
@@ -152,10 +158,12 @@ impl<'a> WindowController<'a> {
 
         println!("Viewport: {} x {}", wc.buffer_width, wc.buffer_height);
 
+        // x,y pos | u,v tex
         wc.vertices = ~[
-            0.0,  0.5, 1.0, 0.0, 0.0,
-            0.5, -0.5, 0.0, 1.0, 0.0,
-            -0.5, -0.5, 0.0, 0.0, 1.0,
+            -1.0, -1.0, 0.0, 0.0,
+             1.0, -1.0, 1.0, 0.0,
+            -1.0,  1.0, 0.0, 1.0,
+             1.0,  1.0, 1.0, 1.0,
             ];
 
         // VAO
@@ -269,15 +277,11 @@ impl<'a> WindowController<'a> {
 
         let pos_attrib = gl2::get_attrib_location(wc.shader_program, "position");
         gl2::enable_vertex_attrib_array(pos_attrib as gl2::GLuint);
-        gl2::vertex_attrib_pointer_f32(pos_attrib as gl2::GLuint, 2, false, 5*4, 0);
+        gl2::vertex_attrib_pointer_f32(pos_attrib as gl2::GLuint, 2, false, 4*4, 0);
 
-        let col_attrib = gl2::get_attrib_location(wc.shader_program, "color");
-        gl2::enable_vertex_attrib_array(col_attrib as gl2::GLuint);
-        gl2::vertex_attrib_pointer_f32(col_attrib as gl2::GLuint, 3, false, 5*4, 2*4);
-
-        // Uniforms
-
-        wc.uni_color = gl2::get_uniform_location(wc.shader_program, "triangleColor");
+        let tex_attrib = gl2::get_attrib_location(wc.shader_program, "texcoord");
+        gl2::enable_vertex_attrib_array(tex_attrib as gl2::GLuint);
+        gl2::vertex_attrib_pointer_f32(tex_attrib as gl2::GLuint, 2, false, 4*4, 2*4);
 
         let err = gl2::get_error();
         if err != 0 {
@@ -310,15 +314,51 @@ impl<'a> WindowController<'a> {
         // Animate
 
         let time = glfw::get_time();
-        gl2::uniform_3f(self.uni_color, (sin(time * 4.0f32 as f64) as f32 + 1.0f32) / 2.0f32, 0.0f32, 0.0f32);
+//        gl2::uniform_3f(self.uni_color, (sin(time * 4.0f32 as f64) as f32 + 1.0f32) / 2.0f32, 0.0f32, 0.0f32);
 
         // Draw!
-
-        gl2::draw_arrays(gl2::TRIANGLES, 0, 3);
 
         let err = gl2::get_error();
         if err != 0 {
             println!("draw err = 0x{:x}", err);
+        }
+
+        // Render texture
+        match self.image {
+            Some(ref img) => {
+                // Setup verts
+                let vbo = gl2::gen_buffers(1)[0];
+                gl2::bind_buffer(gl2::ARRAY_BUFFER, vbo);
+
+                // Setup tex
+                let imgbuf = Some(img.as_slice());
+                let texture_id = gl2::gen_textures(1)[0];
+                gl2::bind_texture(gl2::TEXTURE_2D, texture_id);
+                gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_WRAP_S, gl2::CLAMP_TO_EDGE as i32);
+                gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_WRAP_T, gl2::CLAMP_TO_EDGE as i32);
+                gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_MIN_FILTER, gl2::LINEAR as i32);
+                gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_MAG_FILTER, gl2::LINEAR as i32);
+
+                // Apply data
+                gl2::tex_image_2d(gl2::TEXTURE_2D, 0, gl2::RGB as i32,
+                                  self.buffer_width as i32, self.buffer_height as i32, 0,
+                                  gl2::RGB as u32, gl2::UNSIGNED_BYTE, imgbuf);
+
+                gl2::draw_arrays(gl2::TRIANGLE_STRIP, 0, 4);
+
+                // Cleanup
+                gl2::bind_texture(gl2::TEXTURE_2D, 0);
+                gl2::delete_textures([texture_id]);
+
+                gl2::bind_buffer(gl2::ARRAY_BUFFER, vbo);
+                gl2::delete_buffers([vbo]);
+            },
+            _ => (),
+        }
+
+        let err = gl2::get_error();
+        if err != 0 {
+            println!("drawz err = 0x{:x}", err);
         }
 
         self.window.swap_buffers();
@@ -367,7 +407,10 @@ impl<'a> WindowController<'a> {
                         match status {
                             Startup => println!("Startup..."),
                             Processing(progress) => println!("Processing {}", progress),
-                            Complete => println!("Complete!"),
+                            Complete(img) => {
+                                println!("Complete!");
+                                self.image = Some(img);
+                            },
                             Error(code) => println!("Error %08x"),
                         },
                     _ => ()
@@ -412,7 +455,6 @@ type RGB8 = (u8, u8, u8);
 struct MandelEngine {
     buffer_width: uint,
     buffer_height: uint,
-    buffer: Vec<u8>,// RGBA
     palette: Vec<RGB8>,
     re0: f32,
     re1: f32,
@@ -443,7 +485,6 @@ impl MandelEngine {
             im1:  1.0f32,
             buffer_width: w,
             buffer_height: h,
-            buffer: Vec::with_capacity(w*h*3), // RGB 8-bit
             palette: p
         }
     }
@@ -466,7 +507,7 @@ impl MandelEngine {
         while running {
             println!("engine: waiting for command");
             let cmd = cmd_chan.recv();
-            println!("engine: got command {}", cmd);
+            println!("engine:command {}", cmd);
             match cmd {
                 UpdateRegion(re0, re1, im0, im1) => println!("UpdateRegion: {}..{}, {}..{}", re0, re1, im0, im1),
                 Render => self.process(progress_chan),
@@ -480,9 +521,11 @@ impl MandelEngine {
     // Evalute entire region
     fn process(&mut self, progress_chan: &Sender<EngineStatus>) {
 
+        let mut img: Vec<u8> = Vec::with_capacity(self.buffer_height*self.buffer_width*3);
+
         let max_iteration = 1024;
 
-        println!("+++ process in {} bytes", self.buffer.capacity());
+        println!("+++ process in {} bytes", img.capacity());
 
         progress_chan.send(Startup);
 
@@ -511,23 +554,16 @@ impl MandelEngine {
                 let (r,g,b) = *color;
                 let ofs = px+self.buffer_width*py;
 
-                self.buffer.push(r);
-                self.buffer.push(g);
-                self.buffer.push(b);
+                img.push(r);
+                img.push(g);
+                img.push(b);
             }
             if py % 100 == 0 {
                 progress_chan.send(Processing(py));
             }
         }
 
-        // Save
-        let filename = "m1.pgm";
-        let mut file = File::create(&Path::new(filename));
-        file.write(bytes!("P6\n"));
-        file.write_str(format!("{} {}\n255\n", self.buffer_width, self.buffer_height));
-        file.write(self.buffer.slice(0, self.buffer.capacity()));
-
-        progress_chan.send(Complete);
+        progress_chan.send(Complete(img));
     }
 
     // Evaluate a single point
