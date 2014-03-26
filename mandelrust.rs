@@ -75,6 +75,15 @@ void main()
 
 //----------------------------------------------------------------------------
 
+enum EngineStatus {
+    Startup,
+    Processing(uint),
+    Complete,
+    Error(uint)
+}
+
+//----------------------------------------------------------------------------
+
 struct ErrorContext;
 impl glfw::ErrorCallback for ErrorContext {
     fn call(&self, _: glfw::Error, description: ~str) {
@@ -96,8 +105,8 @@ struct WindowController<'a> {
     buffer_width: uint,
     buffer_height: uint,
     chan_wc_to_engine: Option<Sender<uint>>,
-    chan_wc_from_engine: Option<Receiver<uint>>,
-    chan_engine_to_wc: Option<Sender<uint>>,
+    chan_wc_from_engine: Option<Receiver<EngineStatus>>,
+    chan_engine_to_wc: Option<Sender<EngineStatus>>,
     chan_engine_from_wc: Option<Receiver<uint>>,
 }
 
@@ -339,9 +348,15 @@ impl<'a> WindowController<'a> {
     fn maybe_update_display(&mut self) {
         match self.chan_wc_from_engine {
             Some(ref ch) => {
-                let indata = ch.try_recv();
-                match indata {
-                    Data(d) => println!("indata {}", d),
+                let status_msg = ch.try_recv();
+                match status_msg {
+                    Data(status) =>
+                        match status {
+                            Startup => println!("Startup..."),
+                            Processing(progress) => println!("Processing {}", progress),
+                            Complete => println!("Complete!"),
+                            Error(code) => println!("Error %08x"),
+                        },
                     _ => ()
                 }
             },
@@ -429,11 +444,13 @@ impl MandelEngine {
     }
 
     // Evalute entire region
-    fn process(&mut self, progress_chan: &Sender<uint>) {
+    fn process(&mut self, progress_chan: &Sender<EngineStatus>) {
 
         let max_iteration = 1024;
 
         println!("+++ process in {} bytes", self.buffer.capacity());
+
+        progress_chan.send(Startup);
 
         // Process each pixel
         for py in range(0, self.buffer_height) {
@@ -465,7 +482,7 @@ impl MandelEngine {
                 self.buffer.push(b);
             }
             if py % 100 == 0 {
-                progress_chan.send(py);
+                progress_chan.send(Processing(py));
             }
         }
 
@@ -475,6 +492,8 @@ impl MandelEngine {
         file.write(bytes!("P6\n"));
         file.write_str(format!("{} {}\n255\n", self.buffer_width, self.buffer_height));
         file.write(self.buffer.slice(0, self.buffer.capacity()));
+
+        progress_chan.send(Complete);
     }
 
     // Evaluate a single point
