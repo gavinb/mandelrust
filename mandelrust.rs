@@ -356,7 +356,6 @@ impl<'a> WindowController<'a> {
 
         let cmd_ch = self.chan_wc_to_engine.get_mut_ref();
         cmd_ch.send(UpdateRegion(-1.0, 0.0, 0.0, 0.5));
-        cmd_ch.send(Render);
     }
 
     fn maybe_update_display(&mut self) {
@@ -379,6 +378,7 @@ impl<'a> WindowController<'a> {
     }
 
     fn handle_window_event(&self, window: &glfw::Window, (time, event): (f64, glfw::WindowEvent)) {
+        let cmd_ch = self.chan_wc_to_engine.get_ref();
         match event {
 
             glfw::CloseEvent => println!("Time: {}, Window close requested.", time),
@@ -386,7 +386,11 @@ impl<'a> WindowController<'a> {
             glfw::KeyEvent(key, scancode, action, mods) => {
                 println!("Time: {}, Key: {}, ScanCode: {}, Action: {}, Modifiers: [{}]", time, key, scancode, action, mods);
                 match (key, action) {
-                    (glfw::KeyEscape, glfw::Press) => window.set_should_close(true),
+                    (glfw::KeySpace, glfw::Press) => cmd_ch.send(Render),
+                    (glfw::KeyEscape, glfw::Press) => {
+                        cmd_ch.send(Shutdown);
+                        window.set_should_close(true);
+                    },
                     (glfw::KeyR, glfw::Press) => {
                         // Resize should cause the window to "refresh"
                         let (window_width, window_height) = window.get_size();
@@ -565,6 +569,7 @@ fn main() {
             .expect("Failed to create GLFW window.");
 
         window.make_context_current();
+        window.set_key_polling(true);
 
         let mut win_ctrl = ~WindowController::new(&window);
 
