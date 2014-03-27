@@ -30,6 +30,9 @@ use std::vec_ng::Vec;
 use std::io::File;
 use std::path::Path;
 
+static PREVIEW_WIDTH: i32 = 320;
+static PREVIEW_HEIGHT: i32 = 240;
+
 //----------------------------------------------------------------------------
 
 static vertex_shader_source: &'static str = "
@@ -67,10 +70,18 @@ void main()
 //----------------------------------------------------------------------------
 
 #[deriving(Show)]
+enum RenderType {
+    PreviewRender,
+    FullRender,
+}
+
+//----------------------------------------------------------------------------
+
+#[deriving(Show)]
 enum EngineStatus {
     Startup,
     Processing(uint),
-    Complete(Vec<u8>),
+    RenderComplete(RenderType, Vec<u8>),
     Error(uint)
 }
 
@@ -85,7 +96,7 @@ enum EngineCommand {
     PanRight,
     PanUp,
     PanDown,
-    Render,
+    Render(RenderType),
     Shutdown,
 }
 
@@ -108,7 +119,7 @@ struct WindowController<'a> {
     vertex_shader: gl2::GLuint,
     fragment_shader: gl2::GLuint,
     shader_program: gl2::GLuint,
-    texture_id: gl2::GLuint,
+    texture_ids: ~[gl2::GLuint],
     uni_color: gl2::GLint,
     buffer_width: uint,
     buffer_height: uint,
@@ -134,7 +145,7 @@ impl<'a> WindowController<'a> {
                                         vertex_shader: 0,
                                         fragment_shader: 0,
                                         shader_program: 0,
-                                        texture_id: 0,
+                                        texture_ids: ~[],
                                         uni_color: 0,
                                         buffer_width: 0,
                                         buffer_height: 0,
@@ -283,17 +294,29 @@ impl<'a> WindowController<'a> {
             fail!("attrib err = {:x}", err);
         }
 
-        // Setup tex
-        wc.texture_id = gl2::gen_textures(1)[0];
-        gl2::bind_texture(gl2::TEXTURE_2D, wc.texture_id);
+        // Setup textures
+
+        wc.texture_ids = gl2::gen_textures(2);
+
+        // Full tex
+        gl2::bind_texture(gl2::TEXTURE_2D, wc.texture_ids[0]);
         gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_WRAP_S, gl2::CLAMP_TO_EDGE as i32);
         gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_WRAP_T, gl2::CLAMP_TO_EDGE as i32);
         gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_MIN_FILTER, gl2::LINEAR as i32);
         gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_MAG_FILTER, gl2::LINEAR as i32);
-
-        // Allocate texture
         gl2::tex_image_2d(gl2::TEXTURE_2D, 0, gl2::RGB as i32,
                           wc.buffer_width as i32, wc.buffer_height as i32, 0,
+                          gl2::RGB as u32, gl2::UNSIGNED_BYTE, None);
+
+        // Preview tex
+
+        gl2::bind_texture(gl2::TEXTURE_2D, wc.texture_ids[1]);
+        gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_WRAP_S, gl2::CLAMP_TO_EDGE as i32);
+        gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_WRAP_T, gl2::CLAMP_TO_EDGE as i32);
+        gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_MIN_FILTER, gl2::LINEAR as i32);
+        gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_MAG_FILTER, gl2::LINEAR as i32);
+        gl2::tex_image_2d(gl2::TEXTURE_2D, 0, gl2::RGB as i32,
+                          PREVIEW_WIDTH, PREVIEW_HEIGHT, 0,
                           gl2::RGB as u32, gl2::UNSIGNED_BYTE, None);
 
         let err = gl2::get_error();
@@ -349,7 +372,7 @@ impl<'a> WindowController<'a> {
         // Cleanup
 
         gl2::bind_texture(gl2::TEXTURE_2D, 0);
-        gl2::delete_textures([self.texture_id]);
+        gl2::delete_textures(self.texture_ids);
 
         gl2::delete_program(self.shader_program);
         gl2::delete_shader(self.fragment_shader);
@@ -375,7 +398,8 @@ impl<'a> WindowController<'a> {
         });
 
         let cmd_ch = self.chan_wc_to_engine.get_ref();
-        cmd_ch.send(Render);
+//        cmd_ch.send(Render(PreviewRender));
+        cmd_ch.send(Render(FullRender));
     }
 
     fn maybe_update_display(&mut self) {
@@ -387,14 +411,28 @@ impl<'a> WindowController<'a> {
                         match status {
                             Startup => println!("Startup..."),
                             Processing(progress) => println!("Processing {}", progress),
-                            Complete(img) => {
+                            RenderComplete(typ, img) => {
                                 println!("Render Complete!");
                                 //self.image = Some(img);
                                 let imgbuf = Some(img.as_slice());
-                                gl2::tex_sub_image_2d(gl2::TEXTURE_2D, 0,
-                                                      0, 0,
-                                                      self.buffer_width as i32, self.buffer_height as i32,
-                                                      gl2::RGB as u32, gl2::UNSIGNED_BYTE, imgbuf);
+                                match typ {
+                                    FullRender => {
+                                        println!("fullRender {} {}", self.buffer_width, self.buffer_height);
+                                        gl2::bind_texture(gl2::TEXTURE_2D, self.texture_ids[0]);
+                                        gl2::tex_sub_image_2d(gl2::TEXTURE_2D, 0,
+                                                              0, 0,
+                                                              self.buffer_width as i32, self.buffer_height as i32,
+                                                              gl2::RGB as u32, gl2::UNSIGNED_BYTE, imgbuf);
+                                    },
+                                    PreviewRender => {
+                                        println!("Preview {} {}", PREVIEW_WIDTH, PREVIEW_HEIGHT);
+                                        gl2::bind_texture(gl2::TEXTURE_2D, self.texture_ids[1]);
+                                        gl2::tex_sub_image_2d(gl2::TEXTURE_2D, 0,
+                                                              0, 0,
+                                                              PREVIEW_WIDTH, PREVIEW_HEIGHT,
+                                                              gl2::RGB as u32, gl2::UNSIGNED_BYTE, imgbuf);
+                                    },
+                                };
                             },
                             Error(code) => println!("Error {}", code),
                         },
@@ -412,36 +450,44 @@ impl<'a> WindowController<'a> {
             glfw::CloseEvent => println!("Time: {}, Window close requested.", time),
 
             glfw::KeyEvent(key, scancode, action, mods) => {
-                println!("Time: {}, Key: {}, ScanCode: {}, Action: {}, Modifiers: [{}]", time, key, scancode, action, mods);
+//                println!("Time: {}, Key: {}, ScanCode: {}, Action: {}, Modifiers: [{}]", time, key, scancode, action, mods);
                 match (key, action) {
-                    (glfw::KeySpace, glfw::Press) => cmd_ch.send(Render),
+                    (glfw::KeySpace, glfw::Press) => {
+                        cmd_ch.send(Render(FullRender));
+                    },
                     (glfw::KeyEqual, glfw::Press) => {
                         cmd_ch.send(ZoomIn);
-                        cmd_ch.send(Render);
+                        cmd_ch.send(Render(PreviewRender));
                     },
                     (glfw::KeyMinus, glfw::Press) => {
                         cmd_ch.send(ZoomOut);
-                        cmd_ch.send(Render);
+                        cmd_ch.send(Render(PreviewRender));
                     },
                     (glfw::KeyLeft, glfw::Press) => {
                         cmd_ch.send(PanLeft);
-                        cmd_ch.send(Render);
+                        cmd_ch.send(Render(PreviewRender));
                     },
                     (glfw::KeyRight, glfw::Press) => {
                         cmd_ch.send(PanRight);
-                        cmd_ch.send(Render);
+                        cmd_ch.send(Render(PreviewRender));
                     },
                     (glfw::KeyUp, glfw::Press) => {
                         cmd_ch.send(PanUp);
-                        cmd_ch.send(Render);
+                        cmd_ch.send(Render(PreviewRender));
                     },
                     (glfw::KeyDown, glfw::Press) => {
                         cmd_ch.send(PanDown);
-                        cmd_ch.send(Render);
+                        cmd_ch.send(Render(PreviewRender));
                     },
                     (glfw::KeyEscape, glfw::Press) => {
                         cmd_ch.send(Shutdown);
                         window.set_should_close(true);
+                    },
+                    (glfw::KeyS, glfw::Press) => {
+                        match self.image {
+                            Some(ref img) => save_as_pgm(img, self.buffer_width, self.buffer_height, "test.pgm"),
+                            _ => (),
+                        }
                     },
                     (glfw::KeyR, glfw::Press) => {
                         // Resize should cause the window to "refresh"
@@ -508,14 +554,14 @@ impl MandelEngine {
     }
 
     // Rescale pixel coord (x,y) into cspace
-    fn scale_coords(&self, x: uint, y: uint) -> (f32, f32) {
+    fn scale_coords(&self, x: uint, y: uint, w: uint, h: uint) -> (f32, f32) {
         let x0 = self.re0;
         let x1 = self.re1;
         let y0 = self.im0;
         let y1 = self.im1;
 
-        let xx = (x as f32) / (self.buffer_width  as f32) * (x1-x0) + x0;
-        let yy = (y as f32) / (self.buffer_height as f32) * (y1-y0) + y0;
+        let xx = (x as f32) / (w as f32) * (x1-x0) + x0;
+        let yy = (y as f32) / (h as f32) * (y1-y0) + y0;
 
         (xx, yy)
     }
@@ -558,7 +604,7 @@ impl MandelEngine {
                     self.im0 += delta;
                     self.im1 += delta;
                 },
-                Render => self.process(progress_chan),
+                Render(typ) => self.process(typ, progress_chan),
                 Shutdown => running = false,
             }
         }
@@ -567,22 +613,27 @@ impl MandelEngine {
     }
 
     // Evalute entire region
-    fn process(&mut self, progress_chan: &Sender<EngineStatus>) {
+    fn process(&mut self, typ: RenderType, progress_chan: &Sender<EngineStatus>) {
 
-        let mut img: Vec<u8> = Vec::with_capacity(self.buffer_height*self.buffer_width*3);
+        let (width, height) = match typ {
+            PreviewRender => (PREVIEW_WIDTH as uint, PREVIEW_HEIGHT as uint),
+            FullRender => (self.buffer_height, self.buffer_width),
+        };
+
+        let mut img: Vec<u8> = Vec::with_capacity(width*height*3);
 
         let max_iteration = 1024;
 
-        println!("+++ process {}x{} RGB8 in {} bytes", self.buffer_width, self.buffer_height, img.capacity());
+        println!("+++ process {}x{} RGB8 in {} bytes", width, height, img.capacity());
 
         progress_chan.send(Startup);
 
         // Process each pixel
-        for py in range(0, self.buffer_height) {
-            for px in range(0, self.buffer_width) {
+        for py in range(0, height) {
+            for px in range(0, width) {
 
                 // Project pixels into Mandelbrot domain
-                let (x0, y0) = self.scale_coords(px, py);
+                let (x0, y0) = self.scale_coords(px, py, width, height);
 
                 let mut x = 0.0f32;
                 let mut y = 0.0f32;
@@ -610,9 +661,7 @@ impl MandelEngine {
             }
         }
 
-        save_as_pgm(&img, self.buffer_width, self.buffer_height, "test.pgm");
-
-        progress_chan.send(Complete(img));
+        progress_chan.send(RenderComplete(typ, img));
     }
 }
 
@@ -635,7 +684,7 @@ fn main() {
         glfw::window_hint::opengl_profile(glfw::OpenGlCoreProfile);
         glfw::window_hint::resizable(false);
 
-        let window = glfw::Window::create(640, 480,
+        let window = glfw::Window::create(512, 512,
                                           "MandelRust",
                                           glfw::Windowed)
             .expect("Failed to create GLFW window.");
