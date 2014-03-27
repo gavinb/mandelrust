@@ -457,6 +457,15 @@ impl<'a> WindowController<'a> {
     }
 }
 
+fn save_as_pgm(img: &Vec<u8>, width: uint, height: uint, filename: &str) {
+        // Save
+        let filename = "mt.ppm";
+        let mut file = File::create(&Path::new(filename));
+        file.write(bytes!("P6\n"));
+        file.write_str(format!("{} {}\n255\n", width, height));
+        file.write(img.slice(0, img.capacity()));
+}
+
 //----------------------------------------------------------------------------
 
 type RGB8 = (u8, u8, u8);
@@ -601,12 +610,7 @@ impl MandelEngine {
             }
         }
 
-        // Save
-        let filename = "mt.ppm";
-        let mut file = File::create(&Path::new(filename));
-        file.write(bytes!("P6\n"));
-        file.write_str(format!("{} {}\n255\n", self.buffer_width, self.buffer_height));
-        file.write(img.slice(0, img.capacity()));
+        save_as_pgm(&img, self.buffer_width, self.buffer_height, "test.pgm");
 
         progress_chan.send(Complete(img));
     }
