@@ -589,20 +589,20 @@ impl MandelEngine {
                     self.im1 += delta;
                 },
                 PanLeft => {
-                    self.re0 += delta;
-                    self.re1 += delta;
-                },
-                PanRight => {
                     self.re0 -= delta;
                     self.re1 -= delta;
                 },
-                PanUp => {
-                    self.im0 -= delta;
-                    self.im1 -= delta;
+                PanRight => {
+                    self.re0 += delta;
+                    self.re1 += delta;
                 },
-                PanDown => {
+                PanUp => {
                     self.im0 += delta;
                     self.im1 += delta;
+                },
+                PanDown => {
+                    self.im0 -= delta;
+                    self.im1 -= delta;
                 },
                 Render(typ) => self.process(typ, progress_chan),
                 Shutdown => running = false,
