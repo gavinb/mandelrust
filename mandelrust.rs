@@ -9,7 +9,6 @@
 //
 // - OpenGLES
 // - GLFW
-// - cgmath
 //
 //============================================================================
 
@@ -23,24 +22,13 @@ extern crate num;
 
 extern crate opengles;
 extern crate glfw;
-extern crate cgmath;
 
 use opengles::gl2;
 
-use cgmath::vector::Vec3;
-use cgmath::aabb::Aabb3;
-
-use std::comm::{Sender, Receiver, TryRecvResult, Data, channel};
+use std::comm::{Sender, Receiver, Data, channel};
 use std::vec_ng::Vec;
 use std::io::File;
 use std::path::Path;
-
-use num::complex::{Cmplx, Complex64};
-
-use std::num::{sin};
-
-type Vec3f = Vec3<f32>;
-type AABB3f = Aabb3<f32>;
 
 //----------------------------------------------------------------------------
 
@@ -338,11 +326,6 @@ impl<'a> WindowController<'a> {
         gl2::clear_color(0.4, 0.4, 0.4, 1.0);
         gl2::clear(gl2::COLOR_BUFFER_BIT);
 
-        // Animate
-
-        let time = glfw::get_time();
-//        gl2::uniform_3f(self.uni_color, (sin(time * 4.0f32 as f64) as f32 + 1.0f32) / 2.0f32, 0.0f32, 0.0f32);
-
         // Draw!
 
         let err = gl2::get_error();
@@ -351,9 +334,7 @@ impl<'a> WindowController<'a> {
         }
 
         // Render texture
-        if self.texture_id >= 0 {
-                gl2::draw_arrays(gl2::TRIANGLE_STRIP, 0, 4);
-        }
+        gl2::draw_arrays(gl2::TRIANGLE_STRIP, 0, 4);
 
         let err = gl2::get_error();
         if err != 0 {
@@ -415,7 +396,7 @@ impl<'a> WindowController<'a> {
                                                       self.buffer_width as i32, self.buffer_height as i32,
                                                       gl2::RGB as u32, gl2::UNSIGNED_BYTE, imgbuf);
                             },
-                            Error(code) => println!("Error %08x"),
+                            Error(code) => println!("Error {}", code),
                         },
                     _ => ()
                 }
@@ -431,7 +412,7 @@ impl<'a> WindowController<'a> {
             glfw::CloseEvent => println!("Time: {}, Window close requested.", time),
 
             glfw::KeyEvent(key, scancode, action, mods) => {
-//                println!("Time: {}, Key: {}, ScanCode: {}, Action: {}, Modifiers: [{}]", time, key, scancode, action, mods);
+                println!("Time: {}, Key: {}, ScanCode: {}, Action: {}, Modifiers: [{}]", time, key, scancode, action, mods);
                 match (key, action) {
                     (glfw::KeySpace, glfw::Press) => cmd_ch.send(Render),
                     (glfw::KeyEqual, glfw::Press) => {
@@ -610,7 +591,6 @@ impl MandelEngine {
                 // Colour and plot
                 let color = self.palette.get(iteration % 765);
                 let (r,g,b) = *color;
-                let ofs = px+self.buffer_width*py;
 
                 img.push(r);
                 img.push(g);
@@ -629,19 +609,6 @@ impl MandelEngine {
         file.write(img.slice(0, img.capacity()));
 
         progress_chan.send(Complete(img));
-    }
-
-    // Evaluate a single point
-    fn mandel(&self, z: Complex64) -> uint {
-        let maxiter: uint = 80;
-        let mut c: Complex64 = z;
-        for n in range(0, maxiter) {
-            if c.norm() > 2.0 {
-                return n;
-            }
-            c = c*c+z;
-        }
-        return maxiter;
     }
 }
 
