@@ -518,14 +518,11 @@ impl MandelEngine {
 
         // Init palette
         let mut p: Vec<RGB8> = Vec::with_capacity(256*3);
-        for r in range(0, 256) {
-            p.push((r as u8,0,0));
-        }
-        for g in range(0, 256) {
-            p.push((0,g as u8,0));
-        }
-        for b in range(0, 255) {
-            p.push((0,0,b as u8));
+        for c in range(0, 256*3) {
+            let r: u8 = ((c % 512) / 2) as u8;
+            let g: u8 = ((c % 256)) as u8;
+            let b: u8 = ((c % 128) * 2) as u8;
+            p.push((r, g, b));
         }
 
         MandelEngine {
