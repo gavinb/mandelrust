@@ -30,8 +30,8 @@ use std::vec_ng::Vec;
 use std::io::File;
 use std::path::Path;
 
-static PREVIEW_WIDTH: i32 = 320;
-static PREVIEW_HEIGHT: i32 = 240;
+static PREVIEW_WIDTH: i32 = 256;
+static PREVIEW_HEIGHT: i32 = 256;
 
 //----------------------------------------------------------------------------
 
@@ -309,7 +309,6 @@ impl<'a> WindowController<'a> {
                           gl2::RGB as u32, gl2::UNSIGNED_BYTE, None);
 
         // Preview tex
-
         gl2::bind_texture(gl2::TEXTURE_2D, wc.texture_ids[1]);
         gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_WRAP_S, gl2::CLAMP_TO_EDGE as i32);
         gl2::tex_parameter_i(gl2::TEXTURE_2D, gl2::TEXTURE_WRAP_T, gl2::CLAMP_TO_EDGE as i32);
@@ -327,19 +326,6 @@ impl<'a> WindowController<'a> {
         //
 
         wc
-    }
-
-    // Rescale pixel coord (x,y) into cspace
-    fn scale_coords(&self, x: uint, y: uint) -> (f32, f32) {
-        let x0 = -2.5f32;
-        let x1 =  1.0f32;
-        let y0 = -1.0f32;
-        let y1 =  1.0f32;
-
-        let xx = (x as f32) / (self.buffer_width  as f32) * (x1-x0) + x0;
-        let yy = (y as f32) / (self.buffer_height as f32) * (y1-y0) + y0;
-
-        (xx, yy)
     }
 
     fn draw(&self) {
@@ -398,7 +384,7 @@ impl<'a> WindowController<'a> {
         });
 
         let cmd_ch = self.chan_wc_to_engine.get_ref();
-//        cmd_ch.send(Render(PreviewRender));
+        cmd_ch.send(Render(PreviewRender));
         cmd_ch.send(Render(FullRender));
     }
 
@@ -543,7 +529,7 @@ impl MandelEngine {
         }
 
         MandelEngine {
-            re0: -2.5f32,
+            re0: -1.0f32,
             re1:  1.0f32,
             im0: -1.0f32,
             im1:  1.0f32,
@@ -567,9 +553,13 @@ impl MandelEngine {
     }
 
     fn serve(&mut self, cmd_chan: &Receiver<EngineCommand>, progress_chan: &Sender<EngineStatus>) {
-        let delta = 0.1;
         let mut running = true;
         while running {
+            // pan/zoom by 10% of width
+            let delta_r = ((self.re1 - self.re0)*0.1f32).abs();
+            let delta_i = ((self.im1 - self.im0)*0.1f32).abs();
+            println!("delta r,i {},{}", delta_r, delta_i);
+
             let cmd = cmd_chan.recv();
             println!("engine: command {}", cmd);
             match cmd {
@@ -577,32 +567,32 @@ impl MandelEngine {
                     self.re0 = re0; self.re1 = re1; self.im0 = im0; self.im1 = im1;
                 },
                 ZoomIn => {
-                    self.re0 += delta;
-                    self.re1 -= delta;
-                    self.im0 += delta;
-                    self.im1 -= delta;
+                    self.re0 += delta_r;
+                    self.re1 -= delta_r;
+                    self.im0 += delta_i;
+                    self.im1 -= delta_i;
                 },
                 ZoomOut => {
-                    self.re0 -= delta;
-                    self.re1 += delta;
-                    self.im0 -= delta;
-                    self.im1 += delta;
+                    self.re0 -= delta_r;
+                    self.re1 += delta_r;
+                    self.im0 += delta_i;
+                    self.im1 -= delta_i;
                 },
                 PanLeft => {
-                    self.re0 -= delta;
-                    self.re1 -= delta;
+                    self.re0 -= delta_r;
+                    self.re1 -= delta_r;
                 },
                 PanRight => {
-                    self.re0 += delta;
-                    self.re1 += delta;
+                    self.re0 += delta_r;
+                    self.re1 += delta_r;
                 },
                 PanUp => {
-                    self.im0 += delta;
-                    self.im1 += delta;
+                    self.im0 += delta_i;
+                    self.im1 += delta_i;
                 },
                 PanDown => {
-                    self.im0 -= delta;
-                    self.im1 -= delta;
+                    self.im0 -= delta_i;
+                    self.im1 -= delta_i;
                 },
                 Render(typ) => self.process(typ, progress_chan),
                 Shutdown => running = false,
@@ -625,6 +615,7 @@ impl MandelEngine {
         let max_iteration = 1024;
 
         println!("+++ process {}x{} RGB8 in {} bytes", width, height, img.capacity());
+        println!("            re: {}..{} im: {}..{}", self.re0, self.re1, self.im0, self.im1);
 
         progress_chan.send(Startup);
 
