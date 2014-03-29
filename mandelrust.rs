@@ -517,12 +517,12 @@ impl MandelEngine {
     fn new(w: uint, h: uint) -> MandelEngine {
 
         // Init palette
-        let mut p: Vec<RGB8> = Vec::with_capacity(256*3);
-        for c in range(0, 256*3) {
-            let r: u8 = ((c % 512) / 2) as u8;
-            let g: u8 = ((c % 256)) as u8;
-            let b: u8 = ((c % 128) * 2) as u8;
-            p.push((r, g, b));
+        let mut p: Vec<RGB8> = Vec::with_capacity(256*2);
+        for r in range(0, 256) {
+            for b in range(0, 256*2) {
+                let g: u8 = ((r * b) % 256) as u8;
+                p.push((r as u8, g as u8, b as u8));
+            }
         }
 
         MandelEngine {
@@ -572,8 +572,8 @@ impl MandelEngine {
                 ZoomOut => {
                     self.re0 -= delta_r;
                     self.re1 += delta_r;
-                    self.im0 += delta_i;
-                    self.im1 -= delta_i;
+                    self.im0 -= delta_i;
+                    self.im1 += delta_i;
                 },
                 PanLeft => {
                     self.re0 -= delta_r;
