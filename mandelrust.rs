@@ -12,10 +12,7 @@
 //
 //============================================================================
 
-#[license = "MIT"];
-
-#[allow(deprecated_owned_vector)];
-#[allow(dead_code)];
+#![license = "MIT"]
 
 extern crate native;
 extern crate num;
