@@ -507,11 +507,11 @@ impl MandelEngine {
     fn new(w: uint, h: uint) -> MandelEngine {
 
         // Init palette using hue sweep in HSV colour space
-        let mut p: Vec<RGB8> = Vec::with_capacity(360);
+        let mut p: Vec<RGB8> = Vec::with_capacity(720);
         let s = 1.0f32; // saturation
         let v = 1.0f32; // value
         let c = v * s; // chroma
-        for h in range(0, 360) { // hue
+        for h in range(0, 720) { // hue
             let hp = h/60;
             let x = c * (1-(hp % 2 - 1).abs()) as f32;
             let (r,g,b) = if 0 <= hp && hp < 1 {
@@ -617,7 +617,7 @@ impl MandelEngine {
 
         let mut img: Vec<u8> = Vec::with_capacity(width*height*3);
 
-        let max_iteration = 359;
+        let max_iteration = 500;
 
         println!("+++ process {}x{} RGB8 in {} bytes", width, height, img.capacity());
         println!("            re: {}..{} im: {}..{}", self.re0, self.re1, self.im0, self.im1);
@@ -645,7 +645,7 @@ impl MandelEngine {
                 }
 
                 // Colour and plot
-                let color = self.palette.get(iteration % 765);
+                let color = self.palette.get(iteration % 580);
                 let (r,g,b) = *color;
 
                 img.push(r);
