@@ -32,10 +32,9 @@ use std::path::Path;
 use protocol::{PreviewRender, FullRender};
 use protocol::{EngineStatus, Startup, Processing, RenderComplete, Error};
 use protocol::{EngineCommand, ZoomIn, ZoomOut, PanLeft, PanRight, PanUp,PanDown, Render, Shutdown};
-use engine::MandelEngine;
+use protocol::{PREVIEW_WIDTH, PREVIEW_HEIGHT};
 
-static PREVIEW_WIDTH: i32 = 256;
-static PREVIEW_HEIGHT: i32 = 256;
+use engine::MandelEngine;
 
 //----------------------------------------------------------------------------
 

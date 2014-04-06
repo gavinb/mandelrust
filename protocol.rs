@@ -19,6 +19,11 @@ pub enum RenderType {
     FullRender,
 }
 
+// @todo Why does the compiler complain when this is used in the importing module?
+// "warning: code is never used: `PREVIEW_WIDTH`, #[warn(dead_code)] on by default"
+pub static PREVIEW_WIDTH: i32 = 256;
+pub static PREVIEW_HEIGHT: i32 = 256;
+
 //----------------------------------------------------------------------------
 
 #[deriving(Show)]
