@@ -512,25 +512,25 @@ impl MandelEngine {
         let v = 1.0f32; // value
         let c = v * s; // chroma
         for h in range(0, 720) { // hue
-            let hp = h/60;
-            let x = c * (1-(hp % 2 - 1).abs()) as f32;
-            let (r,g,b) = if 0 <= hp && hp < 1 {
+            let hp = h as f32/60.0;
+            let x = c * (1.0-(hp % 2.0 - 1.0).abs());
+            let (r,g,b) = if 0.0 <= hp && hp < 1.0 {
                 (c, x, 0.0)
-            } else if 1 <= hp && hp < 2 {
+            } else if 1.0 <= hp && hp < 2.0 {
                 (x, c, 0.0)
-            } else if 2 <= hp && hp < 3 {
+            } else if 2.0 <= hp && hp < 3.0 {
                 (0.0, c, x)
-            } else if 3 <= hp && hp < 4 {
+            } else if 3.0 <= hp && hp < 4.0 {
                 (0.0, x, c)
-            } else if 4 <= hp && hp < 5 {
+            } else if 4.0 <= hp && hp < 5.0 {
                 (x, 0.0, c)
-            } else if 5 <= hp && hp < 6 {
+            } else if 5.0 <= hp && hp < 6.0 {
                 (c, 0.0, x)
             } else {
                 (0.0, 0.0, 0.0)
             };
-
-            p.push(((r*255.0) as u8, (g*255.0) as u8, (b*255.0) as u8));
+            let m = v-c;
+            p.push((((r+m)*255.0) as u8, ((g+m)*255.0) as u8, ((b+m)*255.0) as u8));
         }
 
         MandelEngine {
