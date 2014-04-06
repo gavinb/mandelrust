@@ -55,7 +55,7 @@ fn main() {
     glfw.make_context_current(Some(&window));
     window.set_key_polling(true);
 
-    let mut win_ctrl = ~WindowController::new(&window);
+    let mut win_ctrl = WindowController::new(&window);
 
     win_ctrl.start_engine();
 
