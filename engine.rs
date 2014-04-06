@@ -148,7 +148,7 @@ impl MandelEngine {
 
         let (width, height) = match typ {
             PreviewRender => (PREVIEW_WIDTH as uint, PREVIEW_HEIGHT as uint),
-            FullRender => (self.buffer_height, self.buffer_width),
+            FullRender => (self.buffer_width, self.buffer_height),
         };
 
         let mut img: Vec<u8> = Vec::with_capacity(width*height*3);
