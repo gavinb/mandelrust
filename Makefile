@@ -8,9 +8,11 @@ SOURCES=mandelrust.rs
 %:%.rs
 	$(RUSTC) $(RUST_FLAGS) $<
 
-all:		mandelrust
+all:		mandelrust mr
 
 mandelrust:	mandelrust.rs
 
+mr:		mr.rs
+
 clean:		#
-		@rm -f mandelrust mandelrust.dSYM
+		@rm -f mandelrust mandelrust.dSYM mr mr.dSYM
