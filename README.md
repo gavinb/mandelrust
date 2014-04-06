@@ -1,13 +1,12 @@
-
 ==========
 Mandelrust
 ==========
 
-Author: Gavin Baker
-Email: gavinb@antonym.org
-Date: March 2014
-Version: 0.1
-Web: https://github.com/gavinb/mandelrust
+- Author: Gavin Baker
+- Email: gavinb@antonym.org
+- Date: March 2014
+- Version: 0.1
+- Web: https://github.com/gavinb/mandelrust
 
 Introduction
 ============
@@ -44,11 +43,10 @@ to keep this up to date with `master`.
 
 The following 3rd party libraries are required and expected to be installed:
 
- - rust-opengles (OpenGL bindings, for graphics rendering)
-   https://github.com/mozilla-servo/rust-opengles
-
- - GLFW (GLFW bindings, for managing the OpenGL window and I/O events)
-   https://github.com/bjz/glfw-rs
+ - [rust-opengles](https://github.com/mozilla-servo/rust-opengles) (OpenGL
+   bindings, for graphics rendering)
+ - [https://github.com/bjz/glfw-rs](GLFW) (GLFW bindings, for managing the
+   OpenGL window and I/O events)
 
 The supplied `Makefile` should be sufficient to build the app.  You will
 need to update the paths in `RUST_LIBS` to point to the locations of the
@@ -83,6 +81,6 @@ controls, and other set functions (eg. Julia Sets).
 
 In the meantime, If you have any patches, please send them along via Github.
 
-    :: Gavin Baker
+:: Gavin Baker
 
-    -- Melbourne, Summer 2014
+-- Melbourne, Summer 2014
