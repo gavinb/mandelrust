@@ -20,10 +20,12 @@ extern crate num;
 extern crate opengles;
 extern crate glfw;
 
+use glfw::Context;
+
 use opengles::gl2;
 
 use std::comm::{Sender, Receiver, Data, channel};
-use std::vec_ng::Vec;
+use std::vec::Vec;
 use std::io::File;
 use std::path::Path;
 
@@ -95,15 +97,6 @@ enum EngineCommand {
     PanDown,
     Render(RenderType),
     Shutdown,
-}
-
-//----------------------------------------------------------------------------
-
-struct ErrorContext;
-impl glfw::ErrorCallback for ErrorContext {
-    fn call(&self, _: glfw::Error, description: ~str) {
-        println!("GLFW Error: {:s}", description);
-    }
 }
 
 //----------------------------------------------------------------------------
@@ -679,33 +672,33 @@ fn main() {
 
     println!("GLFW version: {:s}", glfw::get_version_string());
 
-    glfw::start(proc() {
+    let (glfw, errors) = glfw::init().unwrap();
+    glfw::fail_on_error(&errors);
 
-        glfw::window_hint::context_version_major(3);
-        glfw::window_hint::context_version_minor(2);
-        glfw::window_hint::opengl_forward_compat(true);
-        glfw::window_hint::opengl_profile(glfw::OpenGlCoreProfile);
-        glfw::window_hint::resizable(false);
+    glfw.window_hint(glfw::ContextVersion(3, 2));
+    glfw.window_hint(glfw::OpenglForwardCompat(true));
+    glfw.window_hint(glfw::OpenglProfile(glfw::OpenGlCoreProfile));
+    glfw.window_hint(glfw::Resizable(false));
 
-        let window = glfw::Window::create(512, 512,
-                                          "MandelRust",
-                                          glfw::Windowed)
-            .expect("Failed to create GLFW window.");
+    let (window, events) = glfw.create_window(512, 512,
+                                              "MandelRust",
+                                              glfw::Windowed)
+        .expect({glfw::fail_on_error(&errors);
+                 "Failed to create GLFW window."});
 
-        window.make_context_current();
-        window.set_key_polling(true);
+    glfw.make_context_current(Some(&window));
+    window.set_key_polling(true);
 
-        let mut win_ctrl = ~WindowController::new(&window);
+    let mut win_ctrl = ~WindowController::new(&window);
 
-        win_ctrl.start_engine();
+    win_ctrl.start_engine();
 
-        while !window.should_close() {
-            glfw::poll_events();
-            for event in window.flush_events() {
-                win_ctrl.handle_window_event(&window, event);
-            }
-            win_ctrl.maybe_update_display();
-            win_ctrl.draw();
+    while !window.should_close() {
+        glfw.poll_events();
+        for event in glfw::flush_messages(&events) {
+            win_ctrl.handle_window_event(&window, event);
         }
-    });
+        win_ctrl.maybe_update_display();
+        win_ctrl.draw();
+    }
 }
