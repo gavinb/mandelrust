@@ -534,8 +534,8 @@ impl MandelEngine {
         }
 
         MandelEngine {
-            re0: -1.0f32,
-            re1:  1.0f32,
+            re0: -1.4f32,
+            re1:  0.6f32,
             im0: -1.0f32,
             im1:  1.0f32,
             buffer_width: w,
@@ -617,7 +617,7 @@ impl MandelEngine {
 
         let mut img: Vec<u8> = Vec::with_capacity(width*height*3);
 
-        let max_iteration = 1024;
+        let max_iteration = 359;
 
         println!("+++ process {}x{} RGB8 in {} bytes", width, height, img.capacity());
         println!("            re: {}..{} im: {}..{}", self.re0, self.re1, self.im0, self.im1);
