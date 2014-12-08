@@ -1,0 +1,60 @@
+[root]
+name = "mandelrust"
+version = "0.1.0"
+dependencies = [
+ "gleam 0.0.1 (git+https://github.com/servo/gleam)",
+ "glfw 0.0.1 (git+https://github.com/bjz/glfw-rs.git)",
+]
+
+[[package]]
+name = "gl_common"
+version = "0.0.1"
+source = "git+https://github.com/bjz/gl-rs.git#d212190fa35b0c5192565a4e3ac08be16ef8d235"
+
+[[package]]
+name = "gl_generator"
+version = "0.0.1"
+source = "git+https://github.com/bjz/gl-rs.git#d212190fa35b0c5192565a4e3ac08be16ef8d235"
+dependencies = [
+ "gl_common 0.0.1 (git+https://github.com/bjz/gl-rs.git)",
+ "khronos_api 0.0.2 (git+https://github.com/bjz/gl-rs.git)",
+ "rust-xml 0.1.2-pre (git+https://github.com/netvl/rust-xml)",
+]
+
+[[package]]
+name = "gleam"
+version = "0.0.1"
+source = "git+https://github.com/servo/gleam#aaea38be25ce9de6e1e8620fa5b554669ac6475c"
+dependencies = [
+ "gl_generator 0.0.1 (git+https://github.com/bjz/gl-rs.git)",
+]
+
+[[package]]
+name = "glfw"
+version = "0.0.1"
+source = "git+https://github.com/bjz/glfw-rs.git#978384d89cb2371216f184129ab8cae62b250614"
+dependencies = [
+ "glfw-sys 3.0.4 (git+https://github.com/servo/glfw?ref=cargo-3.0.4)",
+ "semver 0.1.3 (git+https://github.com/rust-lang/semver)",
+]
+
+[[package]]
+name = "glfw-sys"
+version = "3.0.4"
+source = "git+https://github.com/servo/glfw?ref=cargo-3.0.4#765dace7e4125b87c764f5ac0e7a80eae5c550b2"
+
+[[package]]
+name = "khronos_api"
+version = "0.0.2"
+source = "git+https://github.com/bjz/gl-rs.git#d212190fa35b0c5192565a4e3ac08be16ef8d235"
+
+[[package]]
+name = "rust-xml"
+version = "0.1.2-pre"
+source = "git+https://github.com/netvl/rust-xml#2d9df3267aeaa4d442e1e19a4dfed733cb1397ed"
+
+[[package]]
+name = "semver"
+version = "0.1.3"
+source = "git+https://github.com/rust-lang/semver#29212953f839337c672d185dde74e14b5dfb1f46"
+

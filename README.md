@@ -5,7 +5,7 @@ Mandelrust
 - Author: Gavin Baker
 - Email: gavinb@antonym.org
 - Date: March 2014
-- Version: 0.1
+- Version: 0.2
 - Web: https://github.com/gavinb/mandelrust
 
 Introduction
@@ -36,7 +36,7 @@ To download, simply run:
 Building
 ========
 
-This code was written to work with Rust 0.10 (circa April 2014).  Since the
+This code was written to work with Rust 0.11.0 (circa July 2014).  Since the
 language syntax and standard libraries are subject to change in the period
 leading up to the 1.0 release, this code may break at any time.  I will try
 to keep this up to date with `master`.
@@ -48,12 +48,11 @@ The following 3rd party libraries are required and expected to be installed:
  - [https://github.com/bjz/glfw-rs](GLFW) (GLFW bindings, for managing the
    OpenGL window and I/O events)
 
-The supplied `Makefile` should be sufficient to build the app.  You will
-need to update the paths in `RUST_LIBS` to point to the locations of the
-relevant crates.
+This project now uses Cargo, so simply running:
 
-Once the Cargo build system is ready for use, this project will be updated
-accordingly, which will make building much simpler.
+     cargo build
+
+should be sufficient to build and install the dependencies.
 
 Controls
 ========

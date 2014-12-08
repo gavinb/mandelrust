@@ -1,0 +1,18 @@
+[package]
+
+name = "mandelrust"
+version = "0.1.0"
+authors = [ "gavinb@antonym.org" ]
+
+[[bin]]
+
+name = "mandelrust"
+
+#[dependencies.color]
+#git = "https://github.com/bjz/color-rs.git"
+
+[dependencies.gleam]
+git = "https://github.com/servo/gleam"
+
+[dependencies.glfw]
+git = "https://github.com/bjz/glfw-rs.git"
