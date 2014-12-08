@@ -9,17 +9,12 @@
 //
 //============================================================================
 
-extern crate native;
-extern crate num;
-
 use std::comm::{Sender, Receiver};
 use std::vec::Vec;
 
-use protocol::{RenderType, PreviewRender, FullRender};
-use protocol::{EngineStatus, Startup, Processing, RenderComplete};
-use protocol::{EngineCommand, UpdateRegion, ZoomIn, ZoomOut, PanLeft, PanRight, PanUp,PanDown, Render, Shutdown};
+use protocol::{RenderType, EngineStatus, EngineCommand};
 
-mod protocol;
+use protocol;
 
 static PREVIEW_WIDTH: i32 = 256;
 static PREVIEW_HEIGHT: i32 = 256;
@@ -104,39 +99,39 @@ impl MandelEngine {
             let cmd = cmd_chan.recv();
             println!("engine: command {}", cmd);
             match cmd {
-                UpdateRegion(re0, re1, im0, im1) => {
+                EngineCommand::UpdateRegion(re0, re1, im0, im1) => {
                     self.re0 = re0; self.re1 = re1; self.im0 = im0; self.im1 = im1;
                 },
-                ZoomIn => {
+                EngineCommand::ZoomIn => {
                     self.re0 += delta_r;
                     self.re1 -= delta_r;
                     self.im0 += delta_i;
                     self.im1 -= delta_i;
                 },
-                ZoomOut => {
+                EngineCommand::ZoomOut => {
                     self.re0 -= delta_r;
                     self.re1 += delta_r;
                     self.im0 -= delta_i;
                     self.im1 += delta_i;
                 },
-                PanLeft => {
+                EngineCommand::PanLeft => {
                     self.re0 -= delta_r;
                     self.re1 -= delta_r;
                 },
-                PanRight => {
+                EngineCommand::PanRight => {
                     self.re0 += delta_r;
                     self.re1 += delta_r;
                 },
-                PanUp => {
+                EngineCommand::PanUp => {
                     self.im0 += delta_i;
                     self.im1 += delta_i;
                 },
-                PanDown => {
+                EngineCommand::PanDown => {
                     self.im0 -= delta_i;
                     self.im1 -= delta_i;
                 },
-                Render(typ) => self.process(typ, progress_chan),
-                Shutdown => running = false,
+                EngineCommand::Render(typ) => self.process(typ, progress_chan),
+                EngineCommand::Shutdown => running = false,
             }
         }
 
@@ -147,8 +142,8 @@ impl MandelEngine {
     fn process(&mut self, typ: RenderType, progress_chan: &Sender<EngineStatus>) {
 
         let (width, height) = match typ {
-            PreviewRender => (PREVIEW_WIDTH as uint, PREVIEW_HEIGHT as uint),
-            FullRender => (self.buffer_width, self.buffer_height),
+            RenderType::PreviewRender => (PREVIEW_WIDTH as uint, PREVIEW_HEIGHT as uint),
+            RenderType::FullRender => (self.buffer_width, self.buffer_height),
         };
 
         let mut img: Vec<u8> = Vec::with_capacity(width*height*3);
@@ -158,7 +153,7 @@ impl MandelEngine {
         println!("+++ process {}x{} RGB8 in {} bytes", width, height, img.capacity());
         println!("            re: {}..{} im: {}..{}", self.re0, self.re1, self.im0, self.im1);
 
-        progress_chan.send(Startup);
+        progress_chan.send(EngineStatus::Startup);
 
         // Process each pixel
         for py in range(0, height) {
@@ -189,11 +184,11 @@ impl MandelEngine {
                 img.push(b);
             }
             if py % 100 == 0 {
-                progress_chan.send(Processing(py));
+                progress_chan.send(EngineStatus::Processing(py));
             }
         }
 
-        progress_chan.send(RenderComplete(typ, img));
+        progress_chan.send(EngineStatus::RenderComplete(typ, img));
     }
 }
 
