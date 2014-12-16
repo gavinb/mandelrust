@@ -326,7 +326,7 @@ impl<'a> WindowController<'a> {
 
         let (w,h) = (self.buffer_width, self.buffer_height);
 
-        task::spawn( proc() {
+        task::spawn( || {
 
             let mut engine = MandelEngine::new(w, h);
             engine.serve(&cmd_ch, &progress_ch);
