@@ -11,6 +11,7 @@
 
 use std::comm::{Sender, Receiver};
 use std::vec::Vec;
+use std::num::Float;
 
 use protocol::{RenderType, EngineStatus, EngineCommand};
 
@@ -177,7 +178,7 @@ impl MandelEngine {
 
                 // Colour and plot
                 let color = self.palette.get(iteration % 580);
-                let (r,g,b) = *color;
+                let &(r,g, b) = color.unwrap();
 
                 img.push(r);
                 img.push(g);

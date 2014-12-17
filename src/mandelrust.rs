@@ -27,8 +27,7 @@ fn main() {
 
     println!("GLFW version: {}", glfw::get_version_string());
 
-    let (glfw, errors) = glfw::init().unwrap();
-    glfw::fail_on_errors(&errors);
+    let glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
     glfw.window_hint(glfw::WindowHint::ContextVersion(3, 2));
     glfw.window_hint(glfw::WindowHint::OpenglForwardCompat(true));
@@ -38,8 +37,7 @@ fn main() {
     let (window, events) = glfw.create_window(512, 512,
                                               "MandelRust",
                                               glfw::WindowMode::Windowed)
-        .expect({glfw::fail_on_errors(&errors);
-                 "Failed to create GLFW window."});
+        .expect("Failed to create GLFW window.");
 
     glfw.make_context_current(Some(&window));
     window.set_key_polling(true);
