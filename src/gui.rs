@@ -23,7 +23,7 @@ use protocol::{RenderType, EngineStatus, EngineCommand, PREVIEW_WIDTH, PREVIEW_H
 
 use engine::MandelEngine;
 
-mod gles {
+mod gl {
     include!(concat!(env!("OUT_DIR"), "/gl_bindings.rs"));
 }
 
@@ -66,13 +66,13 @@ void main()
 pub struct WindowController<'a> {
     window: &'a glfw::Window,
     vertices: Vec<f32>,
-    vao: Vec<gl::GLu32>,
-    vbo: Vec<gl::GLu32>,
-    vertex_shader: gl::GLu32,
-    fragment_shader: gl::GLu32,
-    shader_program: gl::GLu32,
-    texture_ids: Vec<gl::GLu32>,
-    uni_color: gl::GLint,
+    vao: Vec<gl::types::GLuint>,
+    vbo: Vec<gl::types::GLuint>,
+    vertex_shader: gl::types::GLuint,
+    fragment_shader: gl::types::GLuint,
+    shader_program: gl::types::GLuint,
+    texture_ids: Vec<gl::types::GLuint>,
+    uni_color: gl::types::GLint,
     buffer_width: u32,
     buffer_height: u32,
     chan_wc_to_engine: Option<Sender<EngineCommand>>,
@@ -112,7 +112,7 @@ impl<'a> WindowController<'a> {
         wc.buffer_width = w as u32;
         wc.buffer_height = h as u32;
 
-        gl::viewport(0, 0, wc.buffer_width as i32, wc.buffer_height as i32);
+        gl::Viewport(0, 0, wc.buffer_width as i32, wc.buffer_height as i32);
 
         println!("Viewport: {} x {}", wc.buffer_width, wc.buffer_height);
 
@@ -126,152 +126,152 @@ impl<'a> WindowController<'a> {
 
         // VAO
 
-        wc.vao = gl::gen_vertex_arrays(1);
-        gl::bind_vertex_array(wc.vao[0]);
+        wc.vao = gl::GenVertexArrays(1);
+        gl::BindVertexArray(wc.vao[0]);
 
         // VBO
 
-        wc.vbo = gl::gen_buffers(1);
-        gl::bind_buffer(gl::ARRAY_BUFFER, wc.vbo[0]);
-        gl::buffer_data(gl::ARRAY_BUFFER, 16*4, mem::transmute(&wc.vertices[0]), gl::STATIC_DRAW);
+        wc.vbo = gl::GenBuffers(1);
+        gl::BindBuffer(gl::ARRAY_BUFFER, wc.vbo[0]);
+        gl::BufferData(gl::ARRAY_BUFFER, 16*4, mem::transmute(&wc.vertices[0]), gl::STATIC_DRAW);
 
         // Vertex Shader
 
-        wc.vertex_shader = gl::create_shader(gl::VERTEX_SHADER);
+        wc.vertex_shader = gl::CreateShader(gl::VERTEX_SHADER);
 
         if wc.vertex_shader == 0 {
             panic!("Create v.shader failed");
         }
 
-        gl::shader_source(wc.vertex_shader, 1, mem::transmute(vec![vertex_shader_source.as_ptr()].as_ptr()), &1);
+        gl::ShaderSource(wc.vertex_shader, 1, mem::transmute(vec![vertex_shader_source.as_ptr()].as_ptr()), &1);
 
-        let err = gl::get_error();
+        let err = gl::GetError();
         if err != 0 {
             panic!("glShaderSource.v err 0x{:x}", err);
         }
 
-        gl::compile_shader(wc.vertex_shader);
+        gl::CompileShader(wc.vertex_shader);
 
-        let err = gl::get_error();
+        let err = gl::GetError();
         if err != 0 {
             panic!("glCompileShader.f err 0x{:x}", err);
         }
 
         let status: i32;
-        gl::get_shaderiv(wc.vertex_shader, gl::COMPILE_STATUS, &mut status);
+        gl::GetShaderiv(wc.vertex_shader, gl::COMPILE_STATUS, &mut status);
 
         if status != gl::TRUE as i32 {
-            let log = gl::get_shader_info_log(wc.vertex_shader);
+            let log = gl::GetShaderInfoLog(wc.vertex_shader);
             panic!("glCompileShader.v err 0x{:x}: {}", status, log);
         }
 
         // Fragment Shader
 
-        wc.fragment_shader = gl::create_shader(gl::FRAGMENT_SHADER);
+        wc.fragment_shader = gl::CreateShader(gl::FRAGMENT_SHADER);
 
         if wc.vertex_shader == 0 {
             panic!("Create f.shader failed");
         }
 
-        gl::shader_source(wc.fragment_shader, 1, mem::transmute(vec![fragment_shader_source.as_ptr()].as_ptr()), &1);
+        gl::ShaderSource(wc.fragment_shader, 1, mem::transmute(vec![fragment_shader_source.as_ptr()].as_ptr()), &1);
 
-        let err = gl::get_error();
+        let err = gl::GetError();
         if err != 0 {
             panic!("glShaderSource.f -> 0x{:x}", err);
         }
 
-        gl::compile_shader(wc.fragment_shader);
+        gl::CompileShader(wc.fragment_shader);
 
-        let err = gl::get_error();
+        let err = gl::GetError();
         if err != 0 {
             panic!("glCompileShader.v err 0x{:x}", err);
         }
 
-        let status = gl::get_shader_iv(wc.fragment_shader, gl::COMPILE_STATUS);
+        let status = gl::GetShaderiv(wc.fragment_shader, gl::COMPILE_STATUS);
 
         if status != gl::TRUE as i32 {
-            let log = gl::get_shader_info_log(wc.fragment_shader);
+            let log = gl::GetShaderInfoLog(wc.fragment_shader);
             panic!("glCompileShader.f err 0x{:x}: {}", status, log);
         }
 
         // Link
 
-        wc.shader_program = gl::create_program();
+        wc.shader_program = gl::CreateProgram();
 
         if wc.shader_program == 0 {
             panic!("glCreateProgram failed");
         }
 
-        gl::attach_shader(wc.shader_program, wc.vertex_shader);
-        gl::attach_shader(wc.shader_program, wc.fragment_shader);
+        gl::AttachShader(wc.shader_program, wc.vertex_shader);
+        gl::AttachShader(wc.shader_program, wc.fragment_shader);
 
-        let err = gl::get_error();
+        let err = gl::GetError();
         if err != 0 {
             panic!("glAttachShader err 0x{:x}", err);
         }
 
-        gl::link_program(wc.shader_program);
+        gl::LinkProgram(wc.shader_program);
 
-        let err = gl::get_error();
+        let err = gl::GetError();
         if err != 0 {
             panic!("glLinkProgram err 0x{:x}", err);
         }
 
-        let status = gl::get_program_iv(wc.shader_program, gl::LINK_STATUS);
+        let status = gl::GetProgramiv(wc.shader_program, gl::LINK_STATUS);
 
         if status != gl::TRUE as i32 {
-            let log = gl::get_shader_info_log(wc.shader_program);
+            let log = gl::GetShaderInfoLog(wc.shader_program);
             panic!("glLinkProgram err {}: {}", status, log);
         }
 
-        gl::use_program(wc.shader_program);
+        gl::UseProgram(wc.shader_program);
 
-        let err = gl::get_error();
+        let err = gl::GetError();
         if err != 0 {
-            let log = gl::get_program_info_log(wc.shader_program);
+            let log = gl::GetProgramInfoLog(wc.shader_program);
             panic!("glUseProgram error: {}", log);
         }
 
         // Attributes
 
-        let pos_attrib = gl::get_attrib_location(wc.shader_program, "position");
-        gl::enable_vertex_attrib_array(pos_attrib as gl::GLu32);
-        gl::vertex_attrib_pointer_f32(pos_attrib as gl::GLu32, 2, false, 4*4, 0);
+        let pos_attrib = gl::GetAttribLocation(wc.shader_program, "position");
+        gl::EnableVertexAttribArray(pos_attrib as gl::types::GLuint);
+        gl::VertexAttribPointer(pos_attrib as gl::types::GLuint, 2, false, 4*4, 0);
 
-        let tex_attrib = gl::get_attrib_location(wc.shader_program, "texcoord");
-        gl::enable_vertex_attrib_array(tex_attrib as gl::GLu32);
-        gl::vertex_attrib_pointer_f32(tex_attrib as gl::GLu32, 2, false, 4*4, 2*4);
+        let tex_attrib = gl::GetAttribLocation(wc.shader_program, "texcoord");
+        gl::EnableVertexAttribArray(tex_attrib as gl::types::GLuint);
+        gl::VertexAttribPointer(tex_attrib as gl::types::GLuint, 2, false, 4*4, 2*4);
 
-        let err = gl::get_error();
+        let err = gl::GetError();
         if err != 0 {
             panic!("attrib err = {:x}", err);
         }
 
         // Setup textures
 
-        wc.texture_ids = gl::gen_textures(2);
+        wc.texture_ids = gl::GenTextures(2);
 
         // Full tex
-        gl::bind_texture(gl::TEXTURE_2D, wc.texture_ids[0]);
-        gl::tex_parameter_i(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
-        gl::tex_parameter_i(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
-        gl::tex_parameter_i(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
-        gl::tex_parameter_i(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
-        gl::tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as i32,
+        gl::BindTexture(gl::TEXTURE_2D, wc.texture_ids[0]);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+        gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGB as i32,
                           wc.buffer_width as i32, wc.buffer_height as i32, 0,
                           gl::RGB as u32, gl::UNSIGNED_BYTE, None);
 
         // Preview tex
-        gl::bind_texture(gl::TEXTURE_2D, wc.texture_ids[1]);
-        gl::tex_parameter_i(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
-        gl::tex_parameter_i(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
-        gl::tex_parameter_i(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
-        gl::tex_parameter_i(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
-        gl::tex_image_2d(gl::TEXTURE_2D, 0, gl::RGB as i32,
+        gl::BindTexture(gl::TEXTURE_2D, wc.texture_ids[1]);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::CLAMP_TO_EDGE as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
+        gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
+        gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGB as i32,
                           PREVIEW_WIDTH, PREVIEW_HEIGHT, 0,
                           gl::RGB as u32, gl::UNSIGNED_BYTE, None);
 
-        let err = gl::get_error();
+        let err = gl::GetError();
         if err != 0 {
             panic!("tex err = {:x}", err);
         }
@@ -285,20 +285,20 @@ impl<'a> WindowController<'a> {
 
         // Clear
 
-        gl::clear_color(0.4, 0.4, 0.4, 1.0);
-        gl::clear(gl::COLOR_BUFFER_BIT);
+        gl::ClearColor(0.4, 0.4, 0.4, 1.0);
+        gl::Clear(gl::COLOR_BUFFER_BIT);
 
         // Draw!
 
-        let err = gl::get_error();
+        let err = gl::GetError();
         if err != 0 {
             println!("draw err = 0x{:x}", err);
         }
 
         // Render texture
-        gl::draw_arrays(gl::TRIANGLE_STRIP, 0, 4);
+        gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
 
-        let err = gl::get_error();
+        let err = gl::GetError();
         if err != 0 {
             println!("drawz err = 0x{:x}", err);
         }
@@ -310,16 +310,16 @@ impl<'a> WindowController<'a> {
 
         // Cleanup
 
-        gl::bind_texture(gl::TEXTURE_2D, 0);
-        gl::delete_textures(1, &self.texture_ids[0]);
+        gl::BindTexture(gl::TEXTURE_2D, 0);
+        gl::DeleteTextures(1, &self.texture_ids[0]);
 
-        gl::delete_program(self.shader_program);
-        gl::delete_shader(self.fragment_shader);
-        gl::delete_shader(self.vertex_shader);
+        gl::DeleteProgram(self.shader_program);
+        gl::DeleteShader(self.fragment_shader);
+        gl::DeleteShader(self.vertex_shader);
 
-        gl::delete_buffers(&self.vbo);
+        gl::DeleteBuffers(&self.vbo);
 
-        gl::delete_vertex_arrays(&self.vao);
+        gl::DeleteVertexArrays(&self.vao);
     }
 
     pub fn start_engine(&'a mut self) {
@@ -356,16 +356,16 @@ impl<'a> WindowController<'a> {
                                 match typ {
                                     RenderType::FullRender => {
                                         println!("fullRender {} {}", self.buffer_width, self.buffer_height);
-                                        gl::bind_texture(gl::TEXTURE_2D, self.texture_ids[0]);
-                                        gl::tex_subimage_2D(gl::TEXTURE_2D, 0,
+                                        gl::BindTexture(gl::TEXTURE_2D, self.texture_ids[0]);
+                                        gl::TexSubImage2D(gl::TEXTURE_2D, 0,
                                                               0, 0,
                                                               self.buffer_width as i32, self.buffer_height as i32,
                                                               gl::RGB as u32, gl::UNSIGNED_BYTE, mem::transmute(imgbuf));
                                     },
                                     RenderType::PreviewRender => {
                                         println!("Preview {} {}", PREVIEW_WIDTH, PREVIEW_HEIGHT);
-                                        gl::bind_texture(gl::TEXTURE_2D, self.texture_ids[1]);
-                                        gl::tex_subimage_2d(gl::TEXTURE_2D, 0,
+                                        gl::BindTexture(gl::TEXTURE_2D, self.texture_ids[1]);
+                                        gl::TexSubImage2D(gl::TEXTURE_2D, 0,
                                                               0, 0,
                                                               PREVIEW_WIDTH, PREVIEW_HEIGHT,
                                                               gl::RGB as u32, gl::UNSIGNED_BYTE, mem::transmute(imgbuf));
