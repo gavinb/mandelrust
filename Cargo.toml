@@ -8,11 +8,7 @@ authors = [ "gavinb@antonym.org" ]
 
 name = "mandelrust"
 
-#[dependencies.color]
-#git = "https://github.com/bjz/color-rs.git"
+[dependencies]
 
-[dependencies.gleam]
-git = "https://github.com/servo/gleam"
-
-[dependencies.glfw]
-git = "https://github.com/bjz/glfw-rs.git"
+gl = "0.0.12"
+glfw = "0.0.8"

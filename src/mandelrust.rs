@@ -13,7 +13,6 @@
 #![feature(phase)]
 
 extern crate glfw;
-extern crate gleam;
 
 use gui::WindowController;
 

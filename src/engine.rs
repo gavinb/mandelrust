@@ -9,9 +9,8 @@
 //
 //============================================================================
 
-use std::comm::{Sender, Receiver};
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::vec::Vec;
-use std::num::Float;
 
 use protocol::{RenderType, EngineStatus, EngineCommand};
 
@@ -25,8 +24,8 @@ static PREVIEW_HEIGHT: i32 = 256;
 type RGB8 = (u8, u8, u8);
 
 pub struct MandelEngine {
-    buffer_width: uint,
-    buffer_height: uint,
+    buffer_width: u32,
+    buffer_height: u32,
     palette: Vec<RGB8>,
     re0: f32,
     re1: f32,
@@ -36,14 +35,14 @@ pub struct MandelEngine {
 
 impl MandelEngine {
 
-    pub fn new(w: uint, h: uint) -> MandelEngine {
+    pub fn new(w: u32, h: u32) -> MandelEngine {
 
         // Init palette using hue sweep in HSV colour space
         let mut p: Vec<RGB8> = Vec::with_capacity(720);
         let s = 1.0f32; // saturation
         let v = 1.0f32; // value
         let c = v * s; // chroma
-        for h in range(0, 720u) { // hue
+        for h in 0..720u32 { // hue
             let hp = h as f32/60.0;
             let x = c * (1.0-(hp % 2.0 - 1.0).abs());
             let (r,g,b) = if 0.0 <= hp && hp < 1.0 {
@@ -77,7 +76,7 @@ impl MandelEngine {
     }
 
     // Rescale pixel coord (x,y) into cspace
-    fn scale_coords(&self, x: uint, y: uint, w: uint, h: uint) -> (f32, f32) {
+    fn scale_coords(&self, x: u32, y: u32, w: u32, h: u32) -> (f32, f32) {
         let x0 = self.re0;
         let x1 = self.re1;
         let y0 = self.im0;
@@ -143,7 +142,7 @@ impl MandelEngine {
     fn process(&mut self, typ: RenderType, progress_chan: &Sender<EngineStatus>) {
 
         let (width, height) = match typ {
-            RenderType::PreviewRender => (PREVIEW_WIDTH as uint, PREVIEW_HEIGHT as uint),
+            RenderType::PreviewRender => (PREVIEW_WIDTH as u32, PREVIEW_HEIGHT as u32),
             RenderType::FullRender => (self.buffer_width, self.buffer_height),
         };
 
@@ -157,8 +156,8 @@ impl MandelEngine {
         progress_chan.send(EngineStatus::Startup);
 
         // Process each pixel
-        for py in range(0, height) {
-            for px in range(0, width) {
+        for py in 0..height {
+            for px in 0..width {
 
                 // Project pixels into Mandelbrot domain
                 let (x0, y0) = self.scale_coords(px, py, width, height);

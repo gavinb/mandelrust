@@ -13,7 +13,7 @@ use std::vec::Vec;
 
 //----------------------------------------------------------------------------
 
-#[deriving(Show)]
+#[derive(Debug)]
 pub enum RenderType {
     PreviewRender,
     FullRender,
@@ -26,17 +26,17 @@ pub static PREVIEW_HEIGHT: i32 = 256;
 
 //----------------------------------------------------------------------------
 
-#[deriving(Show)]
+#[derive(Debug)]
 pub enum EngineStatus {
     Startup,
-    Processing(uint),
+    Processing(u32),
     RenderComplete(RenderType, Vec<u8>),
-    Error(uint)
+    Error(u32)
 }
 
 //----------------------------------------------------------------------------
 
-#[deriving(Show)]
+#[derive(Debug)]
 pub enum EngineCommand {
     UpdateRegion(f32, f32, f32, f32),
     ZoomIn,

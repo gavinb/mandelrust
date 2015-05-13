@@ -9,16 +9,14 @@
 //
 //============================================================================
 
-use gleam::gl;
-
 use glfw;
 use glfw::Context;
 
-use std::comm::{Sender, Receiver, channel};
+use std::sync::mpsc::{channel, Sender, Receiver};
 use std::vec::Vec;
-use std::io::File;
+use std::fs::File;
 use std::path::Path;
-use std::task;
+use std::thread;
 use std::mem;
 
 use protocol::{RenderType, EngineStatus, EngineCommand, PREVIEW_WIDTH, PREVIEW_HEIGHT};
@@ -64,15 +62,15 @@ void main()
 pub struct WindowController<'a> {
     window: &'a glfw::Window,
     vertices: Vec<f32>,
-    vao: Vec<gl::GLuint>,
-    vbo: Vec<gl::GLuint>,
-    vertex_shader: gl::GLuint,
-    fragment_shader: gl::GLuint,
-    shader_program: gl::GLuint,
-    texture_ids: Vec<gl::GLuint>,
+    vao: Vec<gl::GLu32>,
+    vbo: Vec<gl::GLu32>,
+    vertex_shader: gl::GLu32,
+    fragment_shader: gl::GLu32,
+    shader_program: gl::GLu32,
+    texture_ids: Vec<gl::GLu32>,
     uni_color: gl::GLint,
-    buffer_width: uint,
-    buffer_height: uint,
+    buffer_width: u32,
+    buffer_height: u32,
     chan_wc_to_engine: Option<Sender<EngineCommand>>,
     chan_wc_from_engine: Option<Receiver<EngineStatus>>,
     chan_engine_to_wc: Option<Sender<EngineStatus>>,
@@ -107,8 +105,8 @@ impl<'a> WindowController<'a> {
         };
 
         let (w, h) =  wc.window.get_framebuffer_size();
-        wc.buffer_width = w as uint;
-        wc.buffer_height = h as uint;
+        wc.buffer_width = w as u32;
+        wc.buffer_height = h as u32;
 
         gl::viewport(0, 0, wc.buffer_width as i32, wc.buffer_height as i32);
 
@@ -233,12 +231,12 @@ impl<'a> WindowController<'a> {
         // Attributes
 
         let pos_attrib = gl::get_attrib_location(wc.shader_program, "position");
-        gl::enable_vertex_attrib_array(pos_attrib as gl::GLuint);
-        gl::vertex_attrib_pointer_f32(pos_attrib as gl::GLuint, 2, false, 4*4, 0);
+        gl::enable_vertex_attrib_array(pos_attrib as gl::GLu32);
+        gl::vertex_attrib_pointer_f32(pos_attrib as gl::GLu32, 2, false, 4*4, 0);
 
         let tex_attrib = gl::get_attrib_location(wc.shader_program, "texcoord");
-        gl::enable_vertex_attrib_array(tex_attrib as gl::GLuint);
-        gl::vertex_attrib_pointer_f32(tex_attrib as gl::GLuint, 2, false, 4*4, 2*4);
+        gl::enable_vertex_attrib_array(tex_attrib as gl::GLu32);
+        gl::vertex_attrib_pointer_f32(tex_attrib as gl::GLu32, 2, false, 4*4, 2*4);
 
         let err = gl::get_error();
         if err != 0 {
@@ -439,7 +437,7 @@ impl<'a> WindowController<'a> {
     }
 }
 
-fn save_as_pgm(img: &Vec<u8>, width: uint, height: uint, filename: &str) {
+fn save_as_pgm(img: &Vec<u8>, width: u32, height: u32, filename: &str) {
         let mut file = File::create(&Path::new(filename));
         file.write(b"P6\n");
         file.write(format!("{} {}\n255\n", width, height).as_bytes());
