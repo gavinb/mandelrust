@@ -23,6 +23,10 @@ use protocol::{RenderType, EngineStatus, EngineCommand, PREVIEW_WIDTH, PREVIEW_H
 
 use engine::MandelEngine;
 
+mod gles {
+    include!(concat!(env!("OUT_DIR"), "/gl_bindings.rs"));
+}
+
 //----------------------------------------------------------------------------
 
 static vertex_shader_source: &'static str = "
