@@ -43,7 +43,7 @@ impl MandelEngine {
         let s = 1.0f32; // saturation
         let v = 1.0f32; // value
         let c = v * s; // chroma
-        for h in range(0, 720) { // hue
+        for h in range(0, 720u) { // hue
             let hp = h as f32/60.0;
             let x = c * (1.0-(hp % 2.0 - 1.0).abs());
             let (r,g,b) = if 0.0 <= hp && hp < 1.0 {

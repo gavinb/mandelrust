@@ -110,7 +110,7 @@ impl<'a> WindowController<'a> {
         wc.buffer_width = w as uint;
         wc.buffer_height = h as uint;
 
-        gl::Viewport(0, 0, wc.buffer_width as i32, wc.buffer_height as i32);
+        gl::viewport(0, 0, wc.buffer_width as i32, wc.buffer_height as i32);
 
         println!("Viewport: {} x {}", wc.buffer_width, wc.buffer_height);
 
@@ -124,39 +124,39 @@ impl<'a> WindowController<'a> {
 
         // VAO
 
-        gl::GenVertexArrays(1, &mut wc.vao[0]);
-        gl::BindVertexArray(wc.vao[0]);
+        wc.vao = gl::gen_vertex_arrays(1);
+        gl::bind_vertex_array(wc.vao[0]);
 
         // VBO
 
-        gl::GenBuffers(1, &mut wc.vbo[0]);
-        gl::BindBuffer(gl::ARRAY_BUFFER, wc.vbo[0]);
-        gl::BufferData(gl::ARRAY_BUFFER, 16*4, mem::transmute(&wc.vertices[0]), gl::STATIC_DRAW);
+        wc.vbo = gl::gen_buffers(1);
+        gl::bind_buffer(gl::ARRAY_BUFFER, wc.vbo[0]);
+        gl::buffer_data(gl::ARRAY_BUFFER, 16*4, mem::transmute(&wc.vertices[0]), gl::STATIC_DRAW);
 
         // Vertex Shader
 
-        wc.vertex_shader = gl::CreateShader(gl::VERTEX_SHADER);
+        wc.vertex_shader = gl::create_shader(gl::VERTEX_SHADER);
 
         if wc.vertex_shader == 0 {
             panic!("Create v.shader failed");
         }
 
-        gl::ShaderSource(wc.vertex_shader, 1, mem::transmute(vec![vertex_shader_source.as_ptr()].as_ptr()), &1);
+        gl::shader_source(wc.vertex_shader, 1, mem::transmute(vec![vertex_shader_source.as_ptr()].as_ptr()), &1);
 
-        let err = gl::GetError();
+        let err = gl::get_error();
         if err != 0 {
             panic!("glShaderSource.v err 0x{:x}", err);
         }
 
-        gl::CompileShader(wc.vertex_shader);
+        gl::compile_shader(wc.vertex_shader);
 
-        let err = gl::GetError();
+        let err = gl::get_error();
         if err != 0 {
             panic!("glCompileShader.f err 0x{:x}", err);
         }
 
         let status: i32;
-        gl::GetShaderiv(wc.vertex_shader, gl::COMPILE_STATUS, &mut status);
+        gl::get_shaderiv(wc.vertex_shader, gl::COMPILE_STATUS, &mut status);
 
         if status != gl::TRUE as i32 {
             let log = gl::get_shader_info_log(wc.vertex_shader);
@@ -171,16 +171,16 @@ impl<'a> WindowController<'a> {
             panic!("Create f.shader failed");
         }
 
-        gl::ShaderSource(wc.fragment_shader, 1, mem::transmute(vec![fragment_shader_source.as_ptr()].as_ptr()), &1);
+        gl::shader_source(wc.fragment_shader, 1, mem::transmute(vec![fragment_shader_source.as_ptr()].as_ptr()), &1);
 
-        let err = gl::GetError();
+        let err = gl::get_error();
         if err != 0 {
             panic!("glShaderSource.f -> 0x{:x}", err);
         }
 
         gl::compile_shader(wc.fragment_shader);
 
-        let err = gl::GetError();
+        let err = gl::get_error();
         if err != 0 {
             panic!("glCompileShader.v err 0x{:x}", err);
         }
@@ -203,14 +203,14 @@ impl<'a> WindowController<'a> {
         gl::attach_shader(wc.shader_program, wc.vertex_shader);
         gl::attach_shader(wc.shader_program, wc.fragment_shader);
 
-        let err = gl::GetError();
+        let err = gl::get_error();
         if err != 0 {
             panic!("glAttachShader err 0x{:x}", err);
         }
 
         gl::link_program(wc.shader_program);
 
-        let err = gl::GetError();
+        let err = gl::get_error();
         if err != 0 {
             panic!("glLinkProgram err 0x{:x}", err);
         }
@@ -224,7 +224,7 @@ impl<'a> WindowController<'a> {
 
         gl::use_program(wc.shader_program);
 
-        let err = gl::GetError();
+        let err = gl::get_error();
         if err != 0 {
             let log = gl::get_program_info_log(wc.shader_program);
             panic!("glUseProgram error: {}", log);
@@ -240,7 +240,7 @@ impl<'a> WindowController<'a> {
         gl::enable_vertex_attrib_array(tex_attrib as gl::GLuint);
         gl::vertex_attrib_pointer_f32(tex_attrib as gl::GLuint, 2, false, 4*4, 2*4);
 
-        let err = gl::GetError();
+        let err = gl::get_error();
         if err != 0 {
             panic!("attrib err = {:x}", err);
         }
@@ -269,7 +269,7 @@ impl<'a> WindowController<'a> {
                           PREVIEW_WIDTH, PREVIEW_HEIGHT, 0,
                           gl::RGB as u32, gl::UNSIGNED_BYTE, None);
 
-        let err = gl::GetError();
+        let err = gl::get_error();
         if err != 0 {
             panic!("tex err = {:x}", err);
         }
@@ -283,20 +283,20 @@ impl<'a> WindowController<'a> {
 
         // Clear
 
-        gl::ClearColor(0.4, 0.4, 0.4, 1.0);
-        gl::Clear(gl::COLOR_BUFFER_BIT);
+        gl::clear_color(0.4, 0.4, 0.4, 1.0);
+        gl::clear(gl::COLOR_BUFFER_BIT);
 
         // Draw!
 
-        let err = gl::GetError();
+        let err = gl::get_error();
         if err != 0 {
             println!("draw err = 0x{:x}", err);
         }
 
         // Render texture
-        gl::DrawArrays(gl::TRIANGLE_STRIP, 0, 4);
+        gl::draw_arrays(gl::TRIANGLE_STRIP, 0, 4);
 
-        let err = gl::GetError();
+        let err = gl::get_error();
         if err != 0 {
             println!("drawz err = 0x{:x}", err);
         }
@@ -308,16 +308,16 @@ impl<'a> WindowController<'a> {
 
         // Cleanup
 
-        gl::BindTexture(gl::TEXTURE_2D, 0);
-        gl::DeleteTextures(1, &self.texture_ids[0]);
+        gl::bind_texture(gl::TEXTURE_2D, 0);
+        gl::delete_textures(1, &self.texture_ids[0]);
 
-        gl::DeleteProgram(self.shader_program);
-        gl::DeleteShader(self.fragment_shader);
-        gl::DeleteShader(self.vertex_shader);
+        gl::delete_program(self.shader_program);
+        gl::delete_shader(self.fragment_shader);
+        gl::delete_shader(self.vertex_shader);
 
-        gl::DeleteBuffers(1, &self.vbo[0]);
+        gl::delete_buffers(&self.vbo);
 
-        gl::DeleteVertexArrays(1, &self.vao[0]);
+        gl::delete_vertex_arrays(&self.vao);
     }
 
     pub fn start_engine(&'a mut self) {
@@ -327,11 +327,11 @@ impl<'a> WindowController<'a> {
 
         let (w,h) = (self.buffer_width, self.buffer_height);
 
-        task::spawn( || {
+//        task::spawn( || {
 
             let mut engine = MandelEngine::new(w, h);
             engine.serve(&cmd_ch, &progress_ch);
-        });
+//        });
 
         let cmd_ch = self.chan_wc_to_engine.unwrap();
         cmd_ch.send(EngineCommand::Render(RenderType::PreviewRender));
@@ -355,7 +355,7 @@ impl<'a> WindowController<'a> {
                                     RenderType::FullRender => {
                                         println!("fullRender {} {}", self.buffer_width, self.buffer_height);
                                         gl::bind_texture(gl::TEXTURE_2D, self.texture_ids[0]);
-                                        gl::TexSubImage2D(gl::TEXTURE_2D, 0,
+                                        gl::tex_subimage_2D(gl::TEXTURE_2D, 0,
                                                               0, 0,
                                                               self.buffer_width as i32, self.buffer_height as i32,
                                                               gl::RGB as u32, gl::UNSIGNED_BYTE, mem::transmute(imgbuf));
@@ -363,7 +363,7 @@ impl<'a> WindowController<'a> {
                                     RenderType::PreviewRender => {
                                         println!("Preview {} {}", PREVIEW_WIDTH, PREVIEW_HEIGHT);
                                         gl::bind_texture(gl::TEXTURE_2D, self.texture_ids[1]);
-                                        gl::TexSubImage2D(gl::TEXTURE_2D, 0,
+                                        gl::tex_subimage_2d(gl::TEXTURE_2D, 0,
                                                               0, 0,
                                                               PREVIEW_WIDTH, PREVIEW_HEIGHT,
                                                               gl::RGB as u32, gl::UNSIGNED_BYTE, mem::transmute(imgbuf));
