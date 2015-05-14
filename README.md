@@ -36,21 +36,20 @@ To download, simply run:
 Building
 ========
 
-This code was written to work with Rust 0.11.0 (circa July 2014).  Since the
-language syntax and standard libraries are subject to change in the period
-leading up to the 1.0 release, this code may break at any time.  I will try
-to keep this up to date with `master`.
+This code was written to work with Rust 1.0 Beta 4 (May 2015), build with
+current versions of 3rd party packages from `crates.io`.
 
-The following 3rd party libraries are required and expected to be installed:
+The following libraries are required:
 
- - [rust-opengles](https://github.com/mozilla-servo/rust-opengles) (OpenGL
-   bindings, for graphics rendering)
- - [https://github.com/bjz/glfw-rs](GLFW) (GLFW bindings, for managing the
-   OpenGL window and I/O events)
+ - *glfw*: GLFW bindings, for managing the OpenGL window and I/O events
+ - *gl*: OpenGL bindings for graphics rendering
+ - *gl_common*: for building OpenGL bindings
+ - *khronos_api*
+ - *gl_generator*
 
-This project now uses Cargo, so simply running:
+This project uses Cargo, so simply running:
 
-     cargo build
+    cargo build
 
 should be sufficient to build and install the dependencies.
 
