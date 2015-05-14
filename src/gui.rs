@@ -66,8 +66,8 @@ void main()
 pub struct WindowController<'a> {
     window: &'a glfw::Window,
     vertices: Vec<f32>,
-    vao: Vec<gl::types::GLuint>,
-    vbo: Vec<gl::types::GLuint>,
+    vao: gl::types::GLuint,
+    vbo: gl::types::GLuint,
     vertex_shader: gl::types::GLuint,
     fragment_shader: gl::types::GLuint,
     shader_program: gl::types::GLuint,
@@ -91,8 +91,8 @@ impl<'a> WindowController<'a> {
         let (chan_engine_to_wc, chan_wc_from_engine) = channel();
 
         let mut wc = WindowController { window: window, 
-                                        vao: vec!(0),
-                                        vbo: vec!(0),
+                                        vao: 0,
+                                        vbo: 0,
                                         vertices: vec!(),
                                         vertex_shader: 0,
                                         fragment_shader: 0,
@@ -126,13 +126,13 @@ impl<'a> WindowController<'a> {
 
         // VAO
 
-        wc.vao = gl::GenVertexArrays(1);
-        gl::BindVertexArray(wc.vao[0]);
+        gl::GenVertexArrays(1, &mut wc.vao);
+        gl::BindVertexArray(wc.vao);
 
         // VBO
 
-        wc.vbo = gl::GenBuffers(1);
-        gl::BindBuffer(gl::ARRAY_BUFFER, wc.vbo[0]);
+        gl::GenBuffers(1, &mut wc.vbo);
+        gl::BindBuffer(gl::ARRAY_BUFFER, wc.vbo);
         gl::BufferData(gl::ARRAY_BUFFER, 16*4, mem::transmute(&wc.vertices[0]), gl::STATIC_DRAW);
 
         // Vertex Shader
@@ -161,7 +161,10 @@ impl<'a> WindowController<'a> {
         gl::GetShaderiv(wc.vertex_shader, gl::COMPILE_STATUS, &mut status);
 
         if status != gl::TRUE as i32 {
-            let log = gl::GetShaderInfoLog(wc.vertex_shader);
+            let log_len: gl::types::GLsizei = 256;
+            let log = Vec::<gl::types::GLchar>::with_capacity(log_len as usize);
+            let log_ptr: *const i8 = mem::transmute(&log.as_ptr());
+            gl::GetShaderInfoLog(wc.vertex_shader, log_len, &mut log_len, &log_ptr);
             panic!("glCompileShader.v err 0x{:x}: {}", status, log);
         }
 
@@ -190,7 +193,9 @@ impl<'a> WindowController<'a> {
         let status = gl::GetShaderiv(wc.fragment_shader, gl::COMPILE_STATUS);
 
         if status != gl::TRUE as i32 {
-            let log = gl::GetShaderInfoLog(wc.fragment_shader);
+            let log_len: gl::types::GLsizei = 256;
+            let log = Vec::<gl::types::GLchar>::with_capacity(log_len as usize);
+            gl::GetShaderInfoLog(wc.fragment_shader, log_len, &mut log_len, &mut log);
             panic!("glCompileShader.f err 0x{:x}: {}", status, log);
         }
 
@@ -217,7 +222,8 @@ impl<'a> WindowController<'a> {
             panic!("glLinkProgram err 0x{:x}", err);
         }
 
-        let status = gl::GetProgramiv(wc.shader_program, gl::LINK_STATUS);
+        let status: gl::types::GLint = 0;
+        gl::GetProgramiv(wc.shader_program, gl::LINK_STATUS, &status);
 
         if status != gl::TRUE as i32 {
             let log = gl::GetShaderInfoLog(wc.shader_program);
@@ -317,9 +323,9 @@ impl<'a> WindowController<'a> {
         gl::DeleteShader(self.fragment_shader);
         gl::DeleteShader(self.vertex_shader);
 
-        gl::DeleteBuffers(&self.vbo);
+        gl::DeleteBuffers(self.vbo);
 
-        gl::DeleteVertexArrays(&self.vao);
+        gl::DeleteVertexArrays(self.vao);
     }
 
     pub fn start_engine(&'a mut self) {

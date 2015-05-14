@@ -96,8 +96,8 @@ impl MandelEngine {
             let delta_i = ((self.im1 - self.im0)*0.1f32).abs();
             println!("delta r,i {},{}", delta_r, delta_i);
 
-            let cmd = cmd_chan.recv();
-            println!("engine: command {}", cmd);
+            let cmd = cmd_chan.recv().unwrap();
+            println!("engine: command {:?}", cmd);
             match cmd {
                 EngineCommand::UpdateRegion(re0, re1, im0, im1) => {
                     self.re0 = re0; self.re1 = re1; self.im0 = im0; self.im1 = im1;
@@ -146,7 +146,7 @@ impl MandelEngine {
             RenderType::FullRender => (self.buffer_width, self.buffer_height),
         };
 
-        let mut img: Vec<u8> = Vec::with_capacity(width*height*3);
+        let mut img: Vec<u8> = Vec::with_capacity((width*height*3) as usize);
 
         let max_iteration = 500;
 
