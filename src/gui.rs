@@ -15,9 +15,11 @@ use glfw::Context;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::vec::Vec;
 use std::fs::File;
+use std::io::Write;
 use std::path::Path;
 use std::thread;
 use std::mem;
+use std::ptr;
 
 use protocol::{RenderType, EngineStatus, EngineCommand, PREVIEW_WIDTH, PREVIEW_HEIGHT};
 
@@ -163,9 +165,9 @@ impl<'a> WindowController<'a> {
         if status != gl::TRUE as i32 {
             let log_len: gl::types::GLsizei = 256;
             let log = Vec::<gl::types::GLchar>::with_capacity(log_len as usize);
-            let log_ptr: *const i8 = mem::transmute(&log.as_ptr());
-            gl::GetShaderInfoLog(wc.vertex_shader, log_len, &mut log_len, &log_ptr);
-            panic!("glCompileShader.v err 0x{:x}: {}", status, log);
+            let log_ptr: *mut gl::types::GLchar = log.as_mut_ptr();
+            gl::GetShaderInfoLog(wc.vertex_shader, log_len, &mut log_len, log_ptr);
+            panic!("glCompileShader.v err 0x{:x}: {:?}", status, log);
         }
 
         // Fragment Shader
@@ -190,13 +192,14 @@ impl<'a> WindowController<'a> {
             panic!("glCompileShader.v err 0x{:x}", err);
         }
 
-        let status = gl::GetShaderiv(wc.fragment_shader, gl::COMPILE_STATUS);
+        gl::GetShaderiv(wc.fragment_shader, gl::COMPILE_STATUS, &mut status);
 
         if status != gl::TRUE as i32 {
             let log_len: gl::types::GLsizei = 256;
             let log = Vec::<gl::types::GLchar>::with_capacity(log_len as usize);
-            gl::GetShaderInfoLog(wc.fragment_shader, log_len, &mut log_len, &mut log);
-            panic!("glCompileShader.f err 0x{:x}: {}", status, log);
+            let log_ptr: *mut i8 = mem::transmute(&log.as_mut_ptr());
+            gl::GetShaderInfoLog(wc.fragment_shader, log_len, &mut log_len, log_ptr);
+            panic!("glCompileShader.f err 0x{:x}: {:?}", status, log);
         }
 
         // Link
@@ -223,28 +226,38 @@ impl<'a> WindowController<'a> {
         }
 
         let status: gl::types::GLint = 0;
-        gl::GetProgramiv(wc.shader_program, gl::LINK_STATUS, &status);
+        let status_ptr: *mut gl::types::GLint = &mut status;
+        gl::GetProgramiv(wc.shader_program, gl::LINK_STATUS, status_ptr);
 
         if status != gl::TRUE as i32 {
-            let log = gl::GetShaderInfoLog(wc.shader_program);
-            panic!("glLinkProgram err {}: {}", status, log);
+            let log_len: gl::types::GLsizei = 256;
+            let log = Vec::<gl::types::GLchar>::with_capacity(log_len as usize);
+            let log_ptr: *mut gl::types::GLchar = log.as_mut_ptr();
+            gl::GetShaderInfoLog(wc.shader_program, log_len, &mut log_len, log_ptr);
+            panic!("glLinkProgram err {}: {:?}", status, log);
         }
 
         gl::UseProgram(wc.shader_program);
 
         let err = gl::GetError();
         if err != 0 {
-            let log = gl::GetProgramInfoLog(wc.shader_program);
-            panic!("glUseProgram error: {}", log);
+            // void glGetProgramInfoLog(GLuint program, GLsizei maxLength, GLsizei *length, GLchar *infoLog);
+            let log_len: gl::types::GLsizei = 1024;
+            let log = Vec::<gl::types::GLchar>::with_capacity(log_len as usize);
+            let log_ptr: *mut gl::types::GLchar = log.as_mut_ptr();
+            gl::GetProgramInfoLog(wc.shader_program, log_len, &mut log_len, log_ptr);
+            panic!("glUseProgram error: {:?}", log);
         }
 
         // Attributes
 
-        let pos_attrib = gl::GetAttribLocation(wc.shader_program, "position");
+        let position_attr_name: *const i8 = "position".to_string().as_ptr() as *const i8;
+        let pos_attrib = gl::GetAttribLocation(wc.shader_program, position_attr_name);
         gl::EnableVertexAttribArray(pos_attrib as gl::types::GLuint);
         gl::VertexAttribPointer(pos_attrib as gl::types::GLuint, 2, false, 4*4, 0);
 
-        let tex_attrib = gl::GetAttribLocation(wc.shader_program, "texcoord");
+        let texcoord_attr_name: *const i8 = "texcoord".to_string().as_ptr() as *const i8;
+        let tex_attrib = gl::GetAttribLocation(wc.shader_program, texcoord_attr_name);
         gl::EnableVertexAttribArray(tex_attrib as gl::types::GLuint);
         gl::VertexAttribPointer(tex_attrib as gl::types::GLuint, 2, false, 4*4, 2*4);
 
@@ -255,7 +268,9 @@ impl<'a> WindowController<'a> {
 
         // Setup textures
 
-        wc.texture_ids = gl::GenTextures(2);
+        let texture_ids: [gl::types::GLuint] = [0, ..2];
+        let texture_ids_ptr: *mut gl::types::GLuint = &texture_ids;
+        gl::GenTextures(2, texture_ids_ptr);
 
         // Full tex
         gl::BindTexture(gl::TEXTURE_2D, wc.texture_ids[0]);
@@ -265,7 +280,7 @@ impl<'a> WindowController<'a> {
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
         gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGB as i32,
                           wc.buffer_width as i32, wc.buffer_height as i32, 0,
-                          gl::RGB as u32, gl::UNSIGNED_BYTE, None);
+                          gl::RGB as u32, gl::UNSIGNED_BYTE, ptr::null());
 
         // Preview tex
         gl::BindTexture(gl::TEXTURE_2D, wc.texture_ids[1]);
@@ -275,7 +290,7 @@ impl<'a> WindowController<'a> {
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
         gl::TexImage2D(gl::TEXTURE_2D, 0, gl::RGB as i32,
                           PREVIEW_WIDTH, PREVIEW_HEIGHT, 0,
-                          gl::RGB as u32, gl::UNSIGNED_BYTE, None);
+                          gl::RGB as u32, gl::UNSIGNED_BYTE, ptr::null());
 
         let err = gl::GetError();
         if err != 0 {
@@ -323,9 +338,9 @@ impl<'a> WindowController<'a> {
         gl::DeleteShader(self.fragment_shader);
         gl::DeleteShader(self.vertex_shader);
 
-        gl::DeleteBuffers(self.vbo);
+        gl::DeleteBuffers(1, self.vbo);
 
-        gl::DeleteVertexArrays(self.vao);
+        gl::DeleteVertexArrays(1, &self.vao);
     }
 
     pub fn start_engine(&'a mut self) {
@@ -394,7 +409,7 @@ impl<'a> WindowController<'a> {
             glfw::WindowEvent::Close => println!("Time: {}, Window close requested.", time),
 
             glfw::WindowEvent::Key(key, scancode, action, mods) => {
-                println!("Time: {}, Key: {}, ScanCode: {}, Action: {}, Modifiers: [{}]", time, key, scancode, action, mods);
+                println!("Time: {}, Key: {:?}, ScanCode: {}, Action: {:?}, Modifiers: [{:?}]", time, key, scancode, action, mods);
                 match (key, action) {
                     (glfw::Key::Space, glfw::Action::Press) => {
                         cmd_ch.send(EngineCommand::Render(RenderType::FullRender));
@@ -448,7 +463,7 @@ impl<'a> WindowController<'a> {
 }
 
 fn save_as_pgm(img: &Vec<u8>, width: u32, height: u32, filename: &str) {
-        let mut file = File::create(&Path::new(filename));
+        let mut file = File::create(&Path::new(filename)).unwrap();
         file.write(b"P6\n");
         file.write(format!("{} {}\n255\n", width, height).as_bytes());
         file.write(img.slice(0, img.capacity()));
