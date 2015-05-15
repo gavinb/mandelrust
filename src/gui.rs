@@ -254,12 +254,12 @@ impl<'a> WindowController<'a> {
         let position_attr_name: *const i8 = "position".to_string().as_ptr() as *const i8;
         let pos_attrib = gl::GetAttribLocation(wc.shader_program, position_attr_name);
         gl::EnableVertexAttribArray(pos_attrib as gl::types::GLuint);
-        gl::VertexAttribPointer(pos_attrib as gl::types::GLuint, 2, false, 4*4, 0);
+        gl::VertexAttribPointer(pos_attrib as gl::types::GLuint, 2, gl::UNSIGNED_INT, gl::FALSE, 4*4, ptr::null());
 
         let texcoord_attr_name: *const i8 = "texcoord".to_string().as_ptr() as *const i8;
         let tex_attrib = gl::GetAttribLocation(wc.shader_program, texcoord_attr_name);
         gl::EnableVertexAttribArray(tex_attrib as gl::types::GLuint);
-        gl::VertexAttribPointer(tex_attrib as gl::types::GLuint, 2, false, 4*4, 2*4);
+        gl::VertexAttribPointer(tex_attrib as gl::types::GLuint, 2, gl::UNSIGNED_INT, gl::FALSE, 4*4, mem::transmute(2*4));
 
         let err = gl::GetError();
         if err != 0 {
@@ -268,8 +268,8 @@ impl<'a> WindowController<'a> {
 
         // Setup textures
 
-        let texture_ids: [gl::types::GLuint] = [0, ..2];
-        let texture_ids_ptr: *mut gl::types::GLuint = &texture_ids;
+        let texture_ids: [gl::types::GLuint; 2] = [0; 2];
+        let texture_ids_ptr: *mut gl::types::GLuint = texture_ids.as_mut_ptr();
         gl::GenTextures(2, texture_ids_ptr);
 
         // Full tex
@@ -338,7 +338,7 @@ impl<'a> WindowController<'a> {
         gl::DeleteShader(self.fragment_shader);
         gl::DeleteShader(self.vertex_shader);
 
-        gl::DeleteBuffers(1, self.vbo);
+        gl::DeleteBuffers(1, &self.vbo);
 
         gl::DeleteVertexArrays(1, &self.vao);
     }
@@ -466,5 +466,5 @@ fn save_as_pgm(img: &Vec<u8>, width: u32, height: u32, filename: &str) {
         let mut file = File::create(&Path::new(filename)).unwrap();
         file.write(b"P6\n");
         file.write(format!("{} {}\n255\n", width, height).as_bytes());
-        file.write(img.slice(0, img.capacity()));
+        file.write(img.as_slice());
 }
