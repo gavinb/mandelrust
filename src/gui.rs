@@ -87,6 +87,7 @@ pub struct WindowController<'a> {
 impl<'a> WindowController<'a> {
     pub fn new(window: &'a glfw::Window) -> WindowController<'a> {
 
+unsafe {
         // WindowController === Engine
         // (Sender<T>, Receiver<T>)
         let (chan_wc_to_engine, chan_engine_from_wc) = channel();
@@ -114,7 +115,7 @@ impl<'a> WindowController<'a> {
         wc.buffer_width = w as u32;
         wc.buffer_height = h as u32;
 
-        gl::Viewport(0, 0, wc.buffer_width as i32, wc.buffer_height as i32);
+        unsafe { gl::Viewport(0, 0, wc.buffer_width as i32, wc.buffer_height as i32); }
 
         println!("Viewport: {} x {}", wc.buffer_width, wc.buffer_height);
 
@@ -159,7 +160,7 @@ impl<'a> WindowController<'a> {
             panic!("glCompileShader.f err 0x{:x}", err);
         }
 
-        let status: i32;
+        let mut status: i32;
         gl::GetShaderiv(wc.vertex_shader, gl::COMPILE_STATUS, &mut status);
 
         if status != gl::TRUE as i32 {
@@ -300,10 +301,11 @@ impl<'a> WindowController<'a> {
         //
 
         wc
+}
     }
 
     pub fn draw(&self) {
-
+unsafe {
         // Clear
 
         gl::ClearColor(0.4, 0.4, 0.4, 1.0);
@@ -325,10 +327,11 @@ impl<'a> WindowController<'a> {
         }
 
         self.window.swap_buffers();
+}
     }
 
     fn uninit(&mut self) {
-
+unsafe {
         // Cleanup
 
         gl::BindTexture(gl::TEXTURE_2D, 0);
@@ -341,6 +344,7 @@ impl<'a> WindowController<'a> {
         gl::DeleteBuffers(1, &self.vbo);
 
         gl::DeleteVertexArrays(1, &self.vao);
+}
     }
 
     pub fn start_engine(&'a mut self) {
@@ -376,20 +380,24 @@ impl<'a> WindowController<'a> {
                                 let imgbuf = img.as_slice().as_ptr();
                                 match typ {
                                     RenderType::FullRender => {
+unsafe {
                                         println!("fullRender {} {}", self.buffer_width, self.buffer_height);
                                         gl::BindTexture(gl::TEXTURE_2D, self.texture_ids[0]);
                                         gl::TexSubImage2D(gl::TEXTURE_2D, 0,
                                                               0, 0,
                                                               self.buffer_width as i32, self.buffer_height as i32,
                                                               gl::RGB as u32, gl::UNSIGNED_BYTE, mem::transmute(imgbuf));
+}
                                     },
                                     RenderType::PreviewRender => {
+unsafe {
                                         println!("Preview {} {}", PREVIEW_WIDTH, PREVIEW_HEIGHT);
                                         gl::BindTexture(gl::TEXTURE_2D, self.texture_ids[1]);
                                         gl::TexSubImage2D(gl::TEXTURE_2D, 0,
                                                               0, 0,
                                                               PREVIEW_WIDTH, PREVIEW_HEIGHT,
                                                               gl::RGB as u32, gl::UNSIGNED_BYTE, mem::transmute(imgbuf));
+}
                                     },
                                 };
                             },
