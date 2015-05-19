@@ -33,7 +33,7 @@ fn main() {
     glfw.window_hint(glfw::WindowHint::OpenGlProfile(glfw::OpenGlProfileHint::Core));
     glfw.window_hint(glfw::WindowHint::Resizable(false));
 
-    let (window, events) = glfw.create_window(512, 512,
+    let (mut window, events) = glfw.create_window(512, 512,
                                               "MandelRust",
                                               glfw::WindowMode::Windowed)
         .expect("Failed to create GLFW window.");
@@ -41,14 +41,16 @@ fn main() {
     glfw.make_context_current(Some(&window));
     window.set_key_polling(true);
 
-    let mut win_ctrl = WindowController::new(&window);
+    let mut win_ctrl = WindowController::new(&mut window);
 
-    win_ctrl.start_engine();
+    {
+        win_ctrl.start_engine();
+    }
 
     while !window.should_close() {
         glfw.poll_events();
         for event in glfw::flush_messages(&events) {
-            win_ctrl.handle_window_event(&window, event);
+            win_ctrl.handle_window_event(&mut window, event);
         }
         win_ctrl.maybe_update_display();
         win_ctrl.draw();

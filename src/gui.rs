@@ -66,7 +66,7 @@ void main()
 //----------------------------------------------------------------------------
 
 pub struct WindowController<'a> {
-    window: &'a glfw::Window,
+    window: &'a mut glfw::Window,
     vertices: Vec<f32>,
     vao: gl::types::GLuint,
     vbo: gl::types::GLuint,
@@ -85,7 +85,7 @@ pub struct WindowController<'a> {
 }
 
 impl<'a> WindowController<'a> {
-    pub fn new(window: &'a glfw::Window) -> WindowController<'a> {
+    pub fn new(window: &'a mut glfw::Window) -> WindowController<'a> {
 
 unsafe {
         // WindowController === Engine
@@ -160,12 +160,12 @@ unsafe {
             panic!("glCompileShader.f err 0x{:x}", err);
         }
 
-        let mut status: i32;
+        let mut status: i32 = gl::FALSE as i32;
         gl::GetShaderiv(wc.vertex_shader, gl::COMPILE_STATUS, &mut status);
 
         if status != gl::TRUE as i32 {
-            let log_len: gl::types::GLsizei = 256;
-            let log = Vec::<gl::types::GLchar>::with_capacity(log_len as usize);
+            let mut log_len: gl::types::GLsizei = 256;
+            let mut log = Vec::<gl::types::GLchar>::with_capacity(log_len as usize);
             let log_ptr: *mut gl::types::GLchar = log.as_mut_ptr();
             gl::GetShaderInfoLog(wc.vertex_shader, log_len, &mut log_len, log_ptr);
             panic!("glCompileShader.v err 0x{:x}: {:?}", status, log);
@@ -196,8 +196,8 @@ unsafe {
         gl::GetShaderiv(wc.fragment_shader, gl::COMPILE_STATUS, &mut status);
 
         if status != gl::TRUE as i32 {
-            let log_len: gl::types::GLsizei = 256;
-            let log = Vec::<gl::types::GLchar>::with_capacity(log_len as usize);
+            let mut log_len: gl::types::GLsizei = 256;
+            let mut log = Vec::<gl::types::GLchar>::with_capacity(log_len as usize);
             let log_ptr: *mut i8 = mem::transmute(&log.as_mut_ptr());
             gl::GetShaderInfoLog(wc.fragment_shader, log_len, &mut log_len, log_ptr);
             panic!("glCompileShader.f err 0x{:x}: {:?}", status, log);
@@ -226,13 +226,13 @@ unsafe {
             panic!("glLinkProgram err 0x{:x}", err);
         }
 
-        let status: gl::types::GLint = 0;
+        let mut status: gl::types::GLint = 0;
         let status_ptr: *mut gl::types::GLint = &mut status;
         gl::GetProgramiv(wc.shader_program, gl::LINK_STATUS, status_ptr);
 
         if status != gl::TRUE as i32 {
-            let log_len: gl::types::GLsizei = 256;
-            let log = Vec::<gl::types::GLchar>::with_capacity(log_len as usize);
+            let mut log_len: gl::types::GLsizei = 256;
+            let mut log = Vec::<gl::types::GLchar>::with_capacity(log_len as usize);
             let log_ptr: *mut gl::types::GLchar = log.as_mut_ptr();
             gl::GetShaderInfoLog(wc.shader_program, log_len, &mut log_len, log_ptr);
             panic!("glLinkProgram err {}: {:?}", status, log);
@@ -243,8 +243,8 @@ unsafe {
         let err = gl::GetError();
         if err != 0 {
             // void glGetProgramInfoLog(GLuint program, GLsizei maxLength, GLsizei *length, GLchar *infoLog);
-            let log_len: gl::types::GLsizei = 1024;
-            let log = Vec::<gl::types::GLchar>::with_capacity(log_len as usize);
+            let mut log_len: gl::types::GLsizei = 1024;
+            let mut log = Vec::<gl::types::GLchar>::with_capacity(log_len as usize);
             let log_ptr: *mut gl::types::GLchar = log.as_mut_ptr();
             gl::GetProgramInfoLog(wc.shader_program, log_len, &mut log_len, log_ptr);
             panic!("glUseProgram error: {:?}", log);
@@ -269,7 +269,7 @@ unsafe {
 
         // Setup textures
 
-        let texture_ids: [gl::types::GLuint; 2] = [0; 2];
+        let mut texture_ids: [gl::types::GLuint; 2] = [0; 2];
         let texture_ids_ptr: *mut gl::types::GLuint = texture_ids.as_mut_ptr();
         gl::GenTextures(2, texture_ids_ptr);
 
@@ -304,7 +304,7 @@ unsafe {
 }
     }
 
-    pub fn draw(&self) {
+    pub fn draw(&mut self) {
 unsafe {
         // Clear
 
@@ -410,7 +410,7 @@ unsafe {
         }
     }
 
-    pub fn handle_window_event(&self, window: &glfw::Window, (time, event): (f64, glfw::WindowEvent)) {
+    pub fn handle_window_event(&self, window: &mut glfw::Window, (time, event): (f64, glfw::WindowEvent)) {
         let cmd_ch = self.chan_wc_to_engine.unwrap();
         match event {
 
