@@ -8,7 +8,8 @@ build = "build.rs"
 
 [[bin]]
 
-name = "mandelrust"
+#name = "mandelrust"
+name = "mr"
 
 [dependencies]
 

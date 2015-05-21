@@ -26,7 +26,7 @@ fn main() {
 
     println!("GLFW version: {}", glfw::get_version_string());
 
-    let glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
+    let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
 
     glfw.window_hint(glfw::WindowHint::ContextVersion(3, 2));
     glfw.window_hint(glfw::WindowHint::OpenGlForwardCompat(true));
@@ -38,19 +38,18 @@ fn main() {
                                               glfw::WindowMode::Windowed)
         .expect("Failed to create GLFW window.");
 
-    glfw.make_context_current(Some(&window));
     window.set_key_polling(true);
+
+    glfw.make_context_current(Some(&window));
 
     let mut win_ctrl = WindowController::new(&mut window);
 
-    {
-        win_ctrl.start_engine();
-    }
+    win_ctrl.start_engine();
 
     while !window.should_close() {
         glfw.poll_events();
-        for event in glfw::flush_messages(&events) {
-            win_ctrl.handle_window_event(&mut window, event);
+        for (time, event) in glfw::flush_messages(&events) {
+            win_ctrl.handle_window_event(&mut window, (time, event));
         }
         win_ctrl.maybe_update_display();
         win_ctrl.draw();

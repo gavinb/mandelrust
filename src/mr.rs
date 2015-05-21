@@ -9,18 +9,15 @@
 //
 //============================================================================
 
-use std::comm::{Sender, Receiver, Data, channel};
 use std::vec::Vec;
-use std::io::File;
+use std::fs::File;
+use std::thread;
+use std::io::{Error, ErrorKind, Write};
 use std::path::Path;
-
-// @note Why should we have to import the enum _and_ all the variants?
-use protocol::{PreviewRender, FullRender};
-use protocol::{EngineStatus, Startup, Processing, RenderComplete, Error};
-use protocol::{EngineCommand, Render, Shutdown};
-use protocol::{PREVIEW_WIDTH, PREVIEW_HEIGHT};
+use std::sync::mpsc::{channel, Sender, Receiver};
 
 use engine::MandelEngine;
+use protocol::{RenderType, EngineCommand, EngineStatus, PREVIEW_WIDTH, PREVIEW_HEIGHT};
 
 // @note Why does the mod come after the use that refers to it?
 mod engine;
@@ -29,18 +26,18 @@ mod protocol;
 //----------------------------------------------------------------------------
 
 struct CommandLine {
-    width: uint,
-    height: uint,
-    chan_cli_to_engine: Option<Sender<EngineCommand>>,
-    chan_cli_from_engine: Option<Receiver<EngineStatus>>,
-    chan_engine_to_cli: Option<Sender<EngineStatus>>,
-    chan_engine_from_cli: Option<Receiver<EngineCommand>>,
+    width: u32,
+    height: u32,
+    chan_cli_to_engine: Option<Sender<protocol::EngineCommand>>,
+    chan_cli_from_engine: Option<Receiver<protocol::EngineStatus>>,
+    chan_engine_to_cli: Option<Sender<protocol::EngineStatus>>,
+    chan_engine_from_cli: Option<Receiver<protocol::EngineCommand>>,
     image: Option<Vec<u8>>,
 }
 
 impl CommandLine {
 
-    pub fn new(w: uint, h: uint) -> CommandLine {
+    pub fn new(w: u32, h: u32) -> CommandLine {
         let (chan_cli_to_engine, chan_engine_from_cli) = channel();
         let (chan_engine_to_cli, chan_cli_from_engine) = channel();
         CommandLine {
@@ -61,19 +58,22 @@ impl CommandLine {
 
         let (w,h) = (self.width, self.height);
 
-        native::task::spawn( proc() {
-
+        thread::spawn( move || {
             let mut engine = MandelEngine::new(w, h);
             engine.serve(&cmd_ch, &progress_ch);
         });
 
-        let cmd_ch = self.chan_cli_to_engine.get_ref();
-        cmd_ch.send(Render(FullRender));
+        match self.chan_cli_to_engine {
+            Some(ref cmd_ch) => cmd_ch.send(EngineCommand::Render(RenderType::FullRender)).unwrap(),
+            _ => panic!("No chan")
+        }
     }
 
     pub fn stop_engine(&mut self) {
-        let cmd_ch = self.chan_cli_to_engine.get_ref();
-        cmd_ch.send(Shutdown);
+        match self.chan_cli_to_engine {
+            Some(ref cmd_ch) => cmd_ch.send(EngineCommand::Shutdown).unwrap(),
+            _ => panic!("No chan")
+        }
     }
 
     pub fn handle_update(&mut self) -> bool {
@@ -81,30 +81,30 @@ impl CommandLine {
             Some(ref ch) => {
                 let status_msg = ch.try_recv();
                 match status_msg {
-                    Data(status) =>
+                    Ok(status) =>
                         match status {
-                            Startup => {
+                            EngineStatus::Startup => {
                                 println!("Startup...");
                                 false
                             },
-                            Processing(progress) => {
+                            EngineStatus::Processing(progress) => {
                                 println!("Processing {}", progress);
                                 false
                             },
-                            RenderComplete(typ, img) => {
+                            EngineStatus::RenderComplete(typ, img) => {
                                 println!("Render Complete!");
                                 self.image = Some(img);
                                 match typ {
-                                    FullRender => {
+                                    RenderType::FullRender => {
                                         println!("fullRender {} {}", self.width, self.height);
                                     },
-                                    PreviewRender => {
+                                    RenderType::PreviewRender => {
                                         println!("Preview {} {}", PREVIEW_WIDTH, PREVIEW_HEIGHT);
                                     },
                                 };
                                 true
                             },
-                            Error(code) => {
+                            EngineStatus::Error(code) => {
                                 println!("Error {}", code);
                                 false
                             },
@@ -116,16 +116,17 @@ impl CommandLine {
         }
     }
 
-    pub fn save_as_ppm(&self, filename: &str) {
+    pub fn save_as_ppm(&self, filename: &str) -> std::io::Result<()> {
         match self.image {
             Some(ref img) => {
                 println!("Saving {}", filename);
-                let mut file = File::create(&Path::new(filename));
-                file.write(bytes!("P6\n"));
-                file.write_str(format!("{} {}\n255\n", self.width, self.height));
-                file.write(img.slice(0, img.capacity()));
+                let mut file = try!(File::create(filename));
+                try!(file.write_all("P6\n".as_bytes()));
+                try!(file.write_all(format!("{} {}\n255\n", self.width, self.height).as_bytes()));
+                try!(file.write_all(&img));
+                Ok(())
             },
-            None => (),
+            None => Err(Error::new(ErrorKind::NotFound, "file")),
         }
     }
 }
