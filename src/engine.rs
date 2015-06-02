@@ -9,12 +9,10 @@
 //
 //============================================================================
 
-use std::sync::mpsc::{channel, Sender, Receiver};
+use std::sync::mpsc::{Sender, Receiver};
 use std::vec::Vec;
 
 use protocol::{RenderType, EngineStatus, EngineCommand};
-
-use protocol;
 
 static PREVIEW_WIDTH: i32 = 256;
 static PREVIEW_HEIGHT: i32 = 256;
@@ -153,7 +151,7 @@ impl MandelEngine {
         println!("+++ process {}x{} RGB8 in {} bytes", width, height, img.capacity());
         println!("            re: {}..{} im: {}..{}", self.re0, self.re1, self.im0, self.im1);
 
-        progress_chan.send(EngineStatus::Startup);
+        progress_chan.send(EngineStatus::Startup).unwrap();
 
         // Process each pixel
         for py in 0..height {
@@ -184,11 +182,11 @@ impl MandelEngine {
                 img.push(b);
             }
             if py % 100 == 0 {
-                progress_chan.send(EngineStatus::Processing(py));
+                progress_chan.send(EngineStatus::Processing(py)).unwrap();
             }
         }
 
-        progress_chan.send(EngineStatus::RenderComplete(typ, img));
+        progress_chan.send(EngineStatus::RenderComplete(typ, img)).unwrap();
     }
 }
 

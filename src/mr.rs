@@ -13,13 +13,11 @@ use std::vec::Vec;
 use std::fs::File;
 use std::thread;
 use std::io::{Error, ErrorKind, Write};
-use std::path::Path;
 use std::sync::mpsc::{channel, Sender, Receiver};
 
 use engine::MandelEngine;
 use protocol::{RenderType, EngineCommand, EngineStatus, PREVIEW_WIDTH, PREVIEW_HEIGHT};
 
-// @note Why does the mod come after the use that refers to it?
 mod engine;
 mod protocol;
 
@@ -139,7 +137,7 @@ fn main() {
 
     loop {
         if cli.handle_update() == true {
-            cli.save_as_ppm("test.ppm");
+            cli.save_as_ppm("test.ppm").unwrap();
             cli.stop_engine();
             break;
         }
