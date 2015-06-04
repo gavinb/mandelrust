@@ -7,8 +7,9 @@ authors = [ "gavinb@antonym.org" ]
 build = "build.rs"
 
 [[bin]]
+name = "mandelrust"
 
-#name = "mandelrust"
+[[bin]]
 name = "mr"
 
 [dependencies]

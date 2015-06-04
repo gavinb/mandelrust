@@ -21,9 +21,8 @@ use std::thread;
 use std::mem;
 use std::ptr;
 
-use protocol::{RenderType, EngineStatus, EngineCommand, PREVIEW_WIDTH, PREVIEW_HEIGHT};
-
 use engine::MandelEngine;
+use protocol::{RenderType, EngineCommand, EngineStatus, PREVIEW_WIDTH, PREVIEW_HEIGHT};
 
 mod gl {
     include!(concat!(env!("OUT_DIR"), "/gl_bindings.rs"));
@@ -260,7 +259,7 @@ unsafe {
         let texcoord_attr_name: *const i8 = "texcoord".to_string().as_ptr() as *const i8;
         let tex_attrib = gl::GetAttribLocation(wc.shader_program, texcoord_attr_name);
         gl::EnableVertexAttribArray(tex_attrib as gl::types::GLuint);
-        gl::VertexAttribPointer(tex_attrib as gl::types::GLuint, 2, gl::UNSIGNED_INT, gl::FALSE, 4*4, mem::transmute(2*4));
+        gl::VertexAttribPointer(tex_attrib as gl::types::GLuint, 2, gl::UNSIGNED_INT, gl::FALSE, 4*4, mem::transmute(2*4u64));
 
         let err = gl::GetError();
         if err != 0 {
@@ -354,15 +353,14 @@ unsafe {
 
         let (w,h) = (self.buffer_width, self.buffer_height);
 
-//        task::spawn( || {
+        thread::spawn(move || {
 
             let mut engine = MandelEngine::new(w, h);
             engine.serve(&cmd_ch, &progress_ch);
-//        });
+        });
 
-        let cmd_ch = self.chan_wc_to_engine.unwrap();
-        cmd_ch.send(EngineCommand::Render(RenderType::PreviewRender));
-        cmd_ch.send(EngineCommand::Render(RenderType::FullRender));
+//        cmd_ch.send(EngineCommand::Render(RenderType::PreviewRender));
+//        cmd_ch.send(EngineCommand::Render(RenderType::FullRender));
     }
 
     pub fn maybe_update_display(&mut self) {
@@ -377,7 +375,7 @@ unsafe {
                             EngineStatus::RenderComplete(typ, img) => {
                                 println!("Render Complete!");
                                 //self.image = Some(img);
-                                let imgbuf = img.as_slice().as_ptr();
+                                let imgbuf = img.as_ptr();
                                 match typ {
                                     RenderType::FullRender => {
 unsafe {
@@ -410,8 +408,8 @@ unsafe {
         }
     }
 
-    pub fn handle_window_event(&self, window: &mut glfw::Window, (time, event): (f64, glfw::WindowEvent)) {
-        let cmd_ch = self.chan_wc_to_engine.unwrap();
+    pub fn handle_window_event(&mut self, window: &mut glfw::Window, (time, event): (f64, glfw::WindowEvent)) {
+        let cmd_ch = self.chan_wc_to_engine.take().expect("no chan_wc_to_engine");
         match event {
 
             glfw::WindowEvent::Close => println!("Time: {}, Window close requested.", time),
@@ -474,5 +472,5 @@ fn save_as_pgm(img: &Vec<u8>, width: u32, height: u32, filename: &str) {
         let mut file = File::create(&Path::new(filename)).unwrap();
         file.write(b"P6\n");
         file.write(format!("{} {}\n255\n", width, height).as_bytes());
-        file.write(img.as_slice());
+        file.write(&img[..]);
 }

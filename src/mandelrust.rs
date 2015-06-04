@@ -9,9 +9,6 @@
 //
 //============================================================================
 
-#![feature(globs)]
-#![feature(phase)]
-
 extern crate glfw;
 
 use gui::WindowController;
