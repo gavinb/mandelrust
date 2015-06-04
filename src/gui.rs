@@ -23,44 +23,11 @@ use std::ptr;
 
 use engine::MandelEngine;
 use protocol::{RenderType, EngineCommand, EngineStatus, PREVIEW_WIDTH, PREVIEW_HEIGHT};
+use shaders::{vertex_shader_source, fragment_shader_source};
 
 mod gl {
     include!(concat!(env!("OUT_DIR"), "/gl_bindings.rs"));
 }
-
-//----------------------------------------------------------------------------
-
-static vertex_shader_source: &'static str = "
-
-#version 150
-
-in vec2 position;
-in vec2 texcoord;
-
-out vec2 Texcoord;
-
-void main()
-{
-    gl_Position = vec4(position, 0.0, 1.0);
-    Texcoord = texcoord;
-}
-";
-
-static fragment_shader_source: &'static str = "
-
-#version 150
-
-in vec2 Texcoord;
-
-out vec4 outColor;
-
-uniform sampler2D tex;
-
-void main()
-{
-    outColor = texture(tex, Texcoord) * vec4(8,8,8,1);
-}
-";
 
 //----------------------------------------------------------------------------
 

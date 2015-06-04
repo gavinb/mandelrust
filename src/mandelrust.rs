@@ -14,6 +14,7 @@ extern crate glfw;
 use gui::WindowController;
 
 mod gui;
+mod shaders;
 mod protocol;
 mod engine;
 
