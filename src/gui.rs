@@ -375,7 +375,7 @@ unsafe {
         }
     }
 
-    pub fn handle_window_event(&mut self, window: &mut glfw::Window, (time, event): (f64, glfw::WindowEvent)) {
+    pub fn handle_window_event(&mut self, (time, event): (f64, glfw::WindowEvent)) {
         let cmd_ch = self.chan_wc_to_engine.take().expect("no chan_wc_to_engine");
         match event {
 
@@ -413,7 +413,7 @@ unsafe {
                     },
                     (glfw::Key::Escape, glfw::Action::Press) => {
                         cmd_ch.send(EngineCommand::Shutdown);
-                        window.set_should_close(true);
+                        self.window.set_should_close(true);
                     },
                     (glfw::Key::S, glfw::Action::Press) => {
                         match self.image {
@@ -423,14 +423,25 @@ unsafe {
                     },
                     (glfw::Key::R, glfw::Action::Press) => {
                         // Resize should cause the window to "refresh"
-                        let (window_width, window_height) = window.get_size();
-                        window.set_size(window_width + 1, window_height);
-                        window.set_size(window_width, window_height);
+                        let (window_width, window_height) = self.window.get_size();
+                        self.window.set_size(window_width + 1, window_height);
+                        self.window.set_size(window_width, window_height);
                     }
                     _ => {}
                 }
             }
             _ => {}
+        }
+    }
+
+    pub fn run(&mut self, glfw: &mut glfw::Glfw, events: &Receiver<(f64, glfw::WindowEvent)>) {
+        while !self.window.should_close() {
+            glfw.poll_events();
+            for (time, event) in glfw::flush_messages(&events) {
+                self.handle_window_event((time, event));
+            }
+            self.maybe_update_display();
+            self.draw();
         }
     }
 }

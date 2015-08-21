@@ -43,13 +43,5 @@ fn main() {
     let mut win_ctrl = WindowController::new(&mut window);
 
     win_ctrl.start_engine();
-
-    while !window.should_close() {
-        glfw.poll_events();
-        for (time, event) in glfw::flush_messages(&events) {
-            win_ctrl.handle_window_event(&mut window, (time, event));
-        }
-        win_ctrl.maybe_update_display();
-        win_ctrl.draw();
-    }
+    win_ctrl.run(&mut glfw, &events);
 }
