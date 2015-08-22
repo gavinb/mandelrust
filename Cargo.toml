@@ -1,10 +1,8 @@
 [package]
 
 name = "mandelrust"
-version = "0.3.0"
+version = "0.4.0"
 authors = [ "gavinb@antonym.org" ]
-
-build = "build.rs"
 
 [[bin]]
 name = "mandelrust"
@@ -14,15 +12,5 @@ name = "mr"
 
 [dependencies]
 
-gl = "0.0.12"
-glfw = "0.0.8"
-gl_common = "0.0.4"
-khronos_api = "0.0.5"
-
-# Ugh see https://github.com/PistonDevelopers/opengl_graphics/issues/127
-libc = "*"
-
-[build-dependencies]
-
-gl_generator = "*"
-khronos_api = "0.0.5"
+glium = "*"
+glutin = "*"

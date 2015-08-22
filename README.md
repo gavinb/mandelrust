@@ -4,8 +4,8 @@ Mandelrust
 
 - Author: Gavin Baker
 - Email: gavinb@antonym.org
-- Date: March 2014
-- Version: 0.2
+- Date: August 2015
+- Version: 0.3
 - Web: https://github.com/gavinb/mandelrust
 
 Introduction
@@ -36,16 +36,12 @@ To download, simply run:
 Building
 ========
 
-This code was written to work with Rust 1.0 Beta 4 (May 2015), build with
-current versions of 3rd party packages from `crates.io`.
+This code was written to work with Rust 1.1 and build with contemporary
+versions of 3rd party packages from `crates.io`.
 
 The following libraries are required:
 
- - *glfw*: GLFW bindings, for managing the OpenGL window and I/O events
- - *gl*: OpenGL bindings for graphics rendering
- - *gl_common*: for building OpenGL bindings
- - *khronos_api*
- - *gl_generator*
+ - *glium*: Glium library, for managing the OpenGL window and I/O events
 
 This project uses Cargo, so simply running:
 

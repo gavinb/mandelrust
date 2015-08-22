@@ -1,0 +1,139 @@
+
+1. Ranges and types for initialisation
+
+Because range(a,b) is [a,b) you can't fill an 8-bit array with all the values:
+
+        for r in range(0u8, 255u8) {
+          b.push(r);
+        }
+
+you have to use uint and cast instead:
+
+        for r in range(0, 256) {
+          b.push(r as u8);
+        }
+
+
+2. Aliased entries in enums
+
+Can't have enum variants with the same value.
+
+enum ResolutionUnit {
+    UnitNone = 1,
+    UnitInch = 2,
+    UnitCentimeter = 3,
+    // Can't have aliased enums
+    //UnitCentimetre = 3,
+    //UnitDefault = 2,
+}
+
+
+3. Namespace with enums - need unique prefix
+
+We can't do this because None is in the toplevel namespace and is used twice:
+
+    enum Compression {
+        None = 1,
+        Huffman = 2,
+        PackBits = 32773,
+    }
+    
+    enum ResolutionUnit {
+        None = 1,
+        Inch = 2,
+        Centimeter = 3,
+    }
+
+So we have to give each a prefix - do we just repeat the enum name?
+
+    enum Compression {
+        CompressionNone = 1,
+        CompressionHuffman = 2,
+        CompressionPackBits = 32773,
+    }
+
+    enum ResolutionUnit {
+        ResolutionUnitNone = 1,
+        ResolutionUnitInch = 2,
+        ResolutionUnitCentimeter = 3,
+    }
+
+But we can't use a '_' to separtate the common prefix with the rest because
+we get warned about non-camel-cased identifiers. What is the convention?
+
+4. Namespaces
+
+Split an app into separate .rs files, so the one crate is made up of several
+modules. You have to not only import/use enums, but all variants too! argh
+
+5. use vs mod
+
+These two have to be in this order:
+
+use gui::WindowController;
+mod gui;
+
+but the mod command is AFAICT importing the module, while the use brings in
+the namespace. But you can't have the use without the mod, and it has to
+come second.
+
+6. Rust error messages count not always displayed
+
+In early stage errors, we get:
+
+  error: aborting due to 2 previous errors
+
+but once the first passes have completed, and there's still more errors,
+no count is printed at the end.
+
+Answer: Huon and eddyb: not all error conditions call span_error (sp?). Not
+a complete answer. :/
+
+7. Trying to use std::cmp::max, but get error:
+
+mandelbrot.rs:43:37: 43:40 error: failed to find an implementation of trait std::cmp::TotalOrd for f64
+
+No floating point types are supported. Why? No way of determining epsilon for equality?
+
+Tried to add it but got:
+
+mandelbrot.rs:11:1: 24:2 error: cannot provide an extension implementation where both trait and type are not defined in this crate
+
+Kinda fair enough. But then - does this mean I can never use max() for fp types???
+
+impl TotalOrd for f64 {
+    fn cmp(&self, other: &f64) -> Ordering {
+        let eps = 0.000001;
+        let delta = self - other;
+
+        if delta.abs() < eps {
+            Equal
+        } else if self > other {
+            Greater
+        } else {
+            Less
+        }
+    }
+}
+
+Answer: huon: need to define your own wrapper type, then define TotalOrd for that, carefully handling
+NaN and -0.0.
+
+8. Scopes and shadowing local variables
+
+There should be a warning for this!
+
+fn main() {
+   let k = 0;
+   for k in range(0, 10) {
+       println!("k' = {}", k);
+   }
+   println!("k = {}", k); // k is 0, not 9
+}
+
+--
+
+Search for glium, find http://tomaka.github.io/glium/
+
+No instructions on how to install/download, no link to crate.
+
