@@ -14,6 +14,7 @@ use std::vec::Vec;
 use std::thread;
 
 use glium;
+use glium::{Surface};
 use glium::glutin::{Event,VirtualKeyCode,ElementState};
 use glium::backend::glutin_backend::GlutinFacade;
 use glium::backend::Facade;
@@ -34,6 +35,7 @@ pub struct WindowController<'a> {
     chan_engine_to_wc: Option<Sender<EngineStatus>>,
     chan_engine_from_wc: Option<Receiver<EngineCommand>>,
     image: Option<Vec<u8>>,
+    shader_program: glium::Program,
 }
 
 impl<'a> WindowController<'a> {
@@ -46,6 +48,12 @@ impl<'a> WindowController<'a> {
         let (chan_wc_to_engine, chan_engine_from_wc) = channel();
         let (chan_engine_to_wc, chan_wc_from_engine) = channel();
 
+        // Build shaders
+        let program = glium::Program::from_source(window,
+                                                  shaders::VERTEX_SHADER_SOURCE,
+                                                  shaders::FRAGMENT_SHADER_SOURCE,
+                                                  None).unwrap();
+
         let mut wc = WindowController { window: window,
                                         buffer_width: 0,
                                         buffer_height: 0,
@@ -53,7 +61,8 @@ impl<'a> WindowController<'a> {
                                         chan_wc_from_engine: Some(chan_wc_from_engine),
                                         chan_engine_to_wc: Some(chan_engine_to_wc),
                                         chan_engine_from_wc: Some(chan_engine_from_wc),
-                                        image: None,
+                                       image: None,
+                                       shader_program: program,
         };
 
         let (w, h) =  wc.window.get_framebuffer_dimensions();
@@ -61,21 +70,6 @@ impl<'a> WindowController<'a> {
         wc.buffer_height = h as u32;
 
 //        let mut imgbuf = image::ImageBuffer::new(w, h);
-
-        #[derive(Copy, Clone)]
-        struct Vertex {
-            position: [f32; 2],
-        }
-
-        implement_vertex!(Vertex, position);
-
-        let vertex1 = Vertex { position: [-0.5, -0.5] };
-        let vertex2 = Vertex { position: [ 0.0,  0.5] };
-        let vertex3 = Vertex { position: [ 0.5, -0.25] };
-        let shape = vec![vertex1, vertex2, vertex3];
-
-        let vertex_buffer = glium::VertexBuffer::new(wc.window, &shape).unwrap();
-        let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
 
         // x,y pos | u,v tex
         // wc.vertices = vec!(
@@ -85,12 +79,6 @@ impl<'a> WindowController<'a> {
         //      1.0,  1.0, 1.0, 1.0,
         //     );
 
-        // Build shaders
-
-        let program = glium::Program::from_source(wc.window,
-                                                  shaders::VERTEX_SHADER_SOURCE,
-                                                  shaders::FRAGMENT_SHADER_SOURCE,
-                                                  None).unwrap();
 
         //
 
@@ -103,10 +91,7 @@ impl<'a> WindowController<'a> {
 
         loop {
             for ev in self.window.poll_events() {
-                match ev {
-                    glium::glutin::Event::Closed => return,
-                    _ => ()
-                }
+//                self.handle_window_event(ev);
             }
             self.maybe_update_display();
             self.draw();
@@ -114,28 +99,38 @@ impl<'a> WindowController<'a> {
     }
 
     pub fn draw(&mut self) {
-//        target.clear_color(0.0, 0.0, 1.0, 1.0);
 
-        // let uniforms = uniform! {
-        //     matrix: [
-        //         [1.0, 0.0, 0.0, 0.0],
-        //         [0.0, 1.0, 0.0, 0.0],
-        //         [0.0, 0.0, 1.0, 0.0],
-        //         [0.0, 0.0, 0.0, 1.0],
-        //     ],
-        //     tex: &texture,
-        // };
+        let uniforms = uniform! {
+            matrix: [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0],
+            ],
+//            tex: &texture,
+        };
 
-        // let mut target = self.window.draw();
-        // target.clear_color(0.0, 0.0, 1.0, 1.0);
-        // target.draw(&vertex_buffer, &indices, &program, &glium::uniforms::EmptyUniforms,
-        //     &Default::default()).unwrap();
-        // target.finish().unwrap();
+        #[derive(Copy, Clone)]
+        struct Vertex {
+            position: [f32; 2],
+            texcoord: [f32; 2],
+        }
 
+        implement_vertex!(Vertex, position, texcoord);
 
-        // target.draw(&vertex_buffer, &indices, &program, &uniforms,
-        //           &Default::default()).unwrap();
-        // target.finish().unwrap();
+        let vertex1 = Vertex { position: [-0.5, -0.5], texcoord: [1.0, 1.0] };
+        let vertex2 = Vertex { position: [ 0.0,  0.5], texcoord: [0.0, 1.0] };
+        let vertex3 = Vertex { position: [ 0.5, -0.25],texcoord: [1.0, 0.0] };
+        let shape = vec![vertex1, vertex2, vertex3];
+
+        let vertex_buffer = glium::VertexBuffer::new(self.window, &shape).unwrap();
+        let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+
+        let mut target = self.window.draw();
+        target.clear_color(0.0, 0.0, 1.0, 1.0);
+        target.draw(&vertex_buffer, &indices, &self.shader_program, &uniforms,
+                  &Default::default()).unwrap();
+        target.finish().unwrap();
     }
 
     fn uninit(&mut self) {
