@@ -94,7 +94,15 @@ impl MandelEngine {
             let delta_i = ((self.im1 - self.im0)*0.1f32).abs();
             println!("delta r,i {},{}", delta_r, delta_i);
 
-            let cmd = cmd_chan.recv().unwrap();
+            let cmd = match cmd_chan.recv() {
+                Ok(cmd) => cmd,
+                Err(e) => {
+                    println!("serve: cmd_chan error: {}", e);
+                    running = false;
+                    break;
+                }
+            };
+
             println!("engine: command {:?}", cmd);
             match cmd {
                 EngineCommand::UpdateRegion(re0, re1, im0, im1) => {
