@@ -90,8 +90,8 @@ impl<'a> WindowController<'a> {
         self.start_engine();
 
         loop {
-            for ev in self.window.poll_events() {
-//                self.handle_window_event(ev);
+            while let Some(ev) = self.window.poll_events().next() {
+                self.handle_window_event(ev);
             }
             self.maybe_update_display();
             self.draw();
@@ -197,6 +197,7 @@ impl<'a> WindowController<'a> {
     }
 
     pub fn handle_window_event(&mut self, event: glium::glutin::Event) {
+        println!("handle_window_event: {:?}", event);
         let cmd_ch = self.chan_wc_to_engine.take().expect("no chan_wc_to_engine");
         match event {
             Event::KeyboardInput(ElementState::Released, _, Some(keycode)) => {
@@ -232,18 +233,12 @@ impl<'a> WindowController<'a> {
                         cmd_ch.send(EngineCommand::Shutdown);
 //                        self.window.set_should_close(true);
                     },
-                    // VirtualKeyCode::S => {
+                    VirtualKeyCode::S => {
                     //     match self.image {
                     //         Some(ref img) => save_as_pgm(img, self.buffer_width, self.buffer_height, "test.pgm"),
                     //         _ => (),
                     //     }
-                    // },
-                    // VirtualKeyCode::R => {
-                    //     // Resize should cause the window to "refresh"
-                    //     let (window_width, window_height) = self.window.get_size();
-                    //     self.window.set_size(window_width + 1, window_height);
-                    //     self.window.set_size(window_width, window_height);
-                    // },
+                    },
                     _ => {}
                 };
             },
