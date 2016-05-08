@@ -35,5 +35,7 @@ fn main() {
 
     let mut win_ctrl = WindowController::new(&mut display);
 
+    println!("Running...");
     win_ctrl.run();
+    println!("Done");
 }
