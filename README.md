@@ -5,7 +5,7 @@ Mandelrust
 - Author: Gavin Baker
 - Email: gavinb@antonym.org
 - Date: August 2015
-- Version: 0.3
+- Version: 0.5
 - Web: https://github.com/gavinb/mandelrust
 
 Introduction
@@ -36,12 +36,13 @@ To download, simply run:
 Building
 ========
 
-This code was written to work with Rust 1.1 and build with contemporary
+This code was written to work with Rust 1.8 and build with contemporary
 versions of 3rd party packages from `crates.io`.
 
 The following libraries are required:
 
  - *glium*: Glium library, for managing the OpenGL window and I/O events
+ - *glutin*: Glutin provides cross-platform OpenGL context management
 
 This project uses Cargo, so simply running:
 

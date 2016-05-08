@@ -18,7 +18,6 @@ use glium::{Surface};
 use glium::glutin::{Event,VirtualKeyCode,ElementState};
 use glium::backend::glutin_backend::GlutinFacade;
 use glium::backend::Facade;
-use image;
 
 use engine::MandelEngine;
 use protocol::{RenderType, EngineCommand, EngineStatus, PREVIEW_WIDTH, PREVIEW_HEIGHT};
