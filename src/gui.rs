@@ -9,6 +9,8 @@
 //
 //============================================================================
 
+#![allow(unused_must_use)]
+
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::vec::Vec;
 use std::thread;
@@ -17,7 +19,6 @@ use glium;
 use glium::{Surface};
 use glium::glutin::{Event,VirtualKeyCode,ElementState};
 use glium::backend::glutin_backend::GlutinFacade;
-use glium::backend::Facade;
 
 use engine::MandelEngine;
 use protocol::{RenderType, EngineCommand, EngineStatus, PREVIEW_WIDTH, PREVIEW_HEIGHT};
@@ -130,9 +131,6 @@ impl<'a> WindowController<'a> {
         target.draw(&vertex_buffer, &indices, &self.shader_program, &uniforms,
                   &Default::default()).unwrap();
         target.finish().unwrap();
-    }
-
-    fn uninit(&mut self) {
     }
 
     pub fn start_engine(&mut self) {

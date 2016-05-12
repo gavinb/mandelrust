@@ -24,7 +24,7 @@ mod shaders;
 
 fn main() {
 
-    use glium::{DisplayBuild,Surface};
+    use glium::DisplayBuild;
 
     let mut display = glium::glutin::WindowBuilder::new()
         .with_dimensions(512, 512)
