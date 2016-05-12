@@ -148,7 +148,7 @@ impl<'a> WindowController<'a> {
             engine.serve(&engine_cmd_ch, &engine_progress_ch);
         });
 
-        let cmd_ch = self.chan_wc_to_engine.take().expect("no wc_to_engine chan");
+        let cmd_ch = self.chan_wc_to_engine.as_ref().expect("no chan_wc_to_engine");
 
         cmd_ch.send(EngineCommand::Render(RenderType::PreviewRender));
         cmd_ch.send(EngineCommand::Render(RenderType::FullRender));
@@ -197,7 +197,7 @@ impl<'a> WindowController<'a> {
 
     pub fn handle_window_event(&mut self, event: glium::glutin::Event) {
         println!("handle_window_event: {:?}", event);
-        let cmd_ch = self.chan_wc_to_engine.take().expect("no chan_wc_to_engine");
+        let cmd_ch = self.chan_wc_to_engine.as_ref().expect("no chan_wc_to_engine");
         match event {
             Event::KeyboardInput(ElementState::Released, _, Some(keycode)) => {
                 match keycode {
