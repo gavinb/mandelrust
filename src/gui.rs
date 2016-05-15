@@ -14,11 +14,13 @@
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::vec::Vec;
 use std::thread;
+use std::io::Cursor;
 
 use glium;
-use glium::{Surface};
+use glium::{Display, Surface};
 use glium::glutin::{Event,VirtualKeyCode,ElementState};
 use glium::backend::glutin_backend::GlutinFacade;
+use image;
 
 use engine::MandelEngine;
 use protocol::{RenderType, EngineCommand, EngineStatus, PREVIEW_WIDTH, PREVIEW_HEIGHT};
@@ -36,6 +38,7 @@ pub struct WindowController<'a> {
     chan_engine_from_wc: Option<Receiver<EngineCommand>>,
     image: Option<Vec<u8>>,
     shader_program: glium::Program,
+    texture: glium::Texture2d,
 }
 
 impl<'a> WindowController<'a> {
@@ -47,6 +50,13 @@ impl<'a> WindowController<'a> {
         // x_from_y == receiver
         let (chan_wc_to_engine, chan_engine_from_wc) = channel();
         let (chan_engine_to_wc, chan_wc_from_engine) = channel();
+
+        // Load sample image into teture for render test
+        let image = image::load(Cursor::new(&include_bytes!("image.png")[..]),
+                                image::PNG).unwrap().to_rgba();
+        let image_dimensions = image.dimensions();
+        let image = glium::texture::RawImage2d::from_raw_rgba_reversed(image.into_raw(), image_dimensions);
+        let texture = glium::texture::Texture2d::new(window, image).unwrap();
 
         // Build shaders
         let program = glium::Program::from_source(window,
@@ -62,7 +72,8 @@ impl<'a> WindowController<'a> {
                                         chan_engine_to_wc: Some(chan_engine_to_wc),
                                         chan_engine_from_wc: Some(chan_engine_from_wc),
                                        image: None,
-                                       shader_program: program,
+                                        shader_program: program,
+                                        texture: texture,
         };
 
         let (w, h) =  wc.window.get_framebuffer_dimensions();
@@ -107,7 +118,7 @@ impl<'a> WindowController<'a> {
                 [0.0, 0.0, 1.0, 0.0],
                 [0.0, 0.0, 0.0, 1.0],
             ],
-//            tex: &texture,
+            tex: &self.texture,
         };
 
         #[derive(Copy, Clone)]
