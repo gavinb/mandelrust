@@ -36,7 +36,7 @@ pub struct WindowController<'a> {
     chan_wc_from_engine: Option<Receiver<EngineStatus>>,
     chan_engine_to_wc: Option<Sender<EngineStatus>>,
     chan_engine_from_wc: Option<Receiver<EngineCommand>>,
-    image: Option<Vec<u8>>,
+    image_buf: image::DynamicImage,
     shader_program: glium::Program,
     texture: glium::Texture2d,
 }
@@ -51,11 +51,15 @@ impl<'a> WindowController<'a> {
         let (chan_wc_to_engine, chan_engine_from_wc) = channel();
         let (chan_engine_to_wc, chan_wc_from_engine) = channel();
 
+        // Size image buffer to frame
+        let (w, h) =  window.get_framebuffer_dimensions();
+        println!("framebuffer: w={} h={}", w, h);
+
+        let mut image_buf = image::DynamicImage::new_rgb8(w, h);
+
         // Load sample image into teture for render test
-        let image = image::load(Cursor::new(&include_bytes!("image.png")[..]),
-                                image::PNG).unwrap().to_rgba();
-        let image_dimensions = image.dimensions();
-        let image = glium::texture::RawImage2d::from_raw_rgba_reversed(image.into_raw(), image_dimensions);
+        let image_dimensions = (w, h);
+        let image = glium::texture::RawImage2d::from_raw_rgba_reversed(image_buf.raw_pixels(), image_dimensions);
         let texture = glium::texture::Texture2d::new(window, image).unwrap();
 
         // Build shaders
@@ -65,33 +69,16 @@ impl<'a> WindowController<'a> {
                                                   None).unwrap();
 
         let mut wc = WindowController { window: window,
-                                        buffer_width: 0,
-                                        buffer_height: 0,
+                                        buffer_width: w,
+                                        buffer_height: h,
                                         chan_wc_to_engine: Some(chan_wc_to_engine),
                                         chan_wc_from_engine: Some(chan_wc_from_engine),
                                         chan_engine_to_wc: Some(chan_engine_to_wc),
                                         chan_engine_from_wc: Some(chan_engine_from_wc),
-                                       image: None,
+                                        image_buf: image_buf,
                                         shader_program: program,
                                         texture: texture,
         };
-
-        let (w, h) =  wc.window.get_framebuffer_dimensions();
-        wc.buffer_width = w as u32;
-        wc.buffer_height = h as u32;
-
-//        let mut imgbuf = image::ImageBuffer::new(w, h);
-
-        // x,y pos | u,v tex
-        // wc.vertices = vec!(
-        //     -1.0, -1.0, 0.0, 0.0,
-        //      1.0, -1.0, 1.0, 0.0,
-        //     -1.0,  1.0, 0.0, 1.0,
-        //      1.0,  1.0, 1.0, 1.0,
-        //     );
-
-
-        //
 
         wc
     }
@@ -179,19 +166,11 @@ impl<'a> WindowController<'a> {
                                 match typ {
                                     RenderType::FullRender => {
                                         println!("fullRender {} {}", self.buffer_width, self.buffer_height);
-                                        // gl::BindTexture(gl::TEXTURE_2D, self.texture_ids[0]);
-                                        // gl::TexSubImage2D(gl::TEXTURE_2D, 0,
-                                        //                       0, 0,
-                                        //                       self.buffer_width as i32, self.buffer_height as i32,
-                                        //                       gl::RGB as u32, gl::UNSIGNED_BYTE, mem::transmute(imgbuf));
+                                        // TODO: update image and texture (full size)
                                     },
                                     RenderType::PreviewRender => {
                                         println!("Preview {} {}", PREVIEW_WIDTH, PREVIEW_HEIGHT);
-                                        // gl::BindTexture(gl::TEXTURE_2D, self.texture_ids[1]);
-                                        // gl::TexSubImage2D(gl::TEXTURE_2D, 0,
-                                        //                       0, 0,
-                                        //                       PREVIEW_WIDTH, PREVIEW_HEIGHT,
-                                        //                       gl::RGB as u32, gl::UNSIGNED_BYTE, mem::transmute(imgbuf));
+                                        // TODO: update image and texture (preview size)
                                     },
                                 };
                             },
